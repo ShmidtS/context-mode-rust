@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "context-mode-rust": {
-      "command": "context-mode-server"
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/context-mode-server.cmd"
     }
   }
 }
