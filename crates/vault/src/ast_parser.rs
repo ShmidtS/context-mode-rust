@@ -1,6 +1,7 @@
 use regex::Regex;
 use std::collections::HashMap;
 use std::path::Path;
+use tree_sitter::{Language, Node, Parser};
 
 macro_rules! lazy_static_re {
     ($name:ident, $pattern:expr) => {
@@ -42,6 +43,14 @@ pub struct AstResult {
 }
 
 pub fn parse_file(path: &Path, content: &str) -> AstResult {
+    try_parse_file_tree_sitter(path, content).unwrap_or_else(|| parse_file_regex(path, content))
+}
+
+pub fn parse_file_tree_sitter(path: &Path, content: &str) -> AstResult {
+    try_parse_file_tree_sitter(path, content).unwrap_or_else(|| parse_file_regex(path, content))
+}
+
+fn parse_file_regex(path: &Path, content: &str) -> AstResult {
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     let language = ext_to_language(ext);
     let mut result = AstResult {
@@ -72,6 +81,203 @@ fn ext_to_language(ext: &str) -> String {
         "php" => "php".into(),
         _ => "generic".into(),
     }
+}
+
+fn try_parse_file_tree_sitter(path: &Path, content: &str) -> Option<AstResult> {
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let language_name = ext_to_language(ext);
+    let language = tree_sitter_language(language_name.as_str())?;
+    let mut parser = Parser::new();
+    parser.set_language(&language).ok()?;
+    let tree = parser.parse(content, None)?;
+    if tree.root_node().has_error() {
+        return None;
+    }
+
+    let mut result = AstResult {
+        language: language_name.clone(),
+        ..Default::default()
+    };
+    collect_tree_sitter_nodes(
+        tree.root_node(),
+        content,
+        language_name.as_str(),
+        &mut result,
+    );
+    Some(result)
+}
+
+fn tree_sitter_language(language: &str) -> Option<Language> {
+    match language {
+        "rust" => Some(tree_sitter_rust::LANGUAGE.into()),
+        "javascript" | "typescript" => Some(tree_sitter_javascript::LANGUAGE.into()),
+        "python" => Some(tree_sitter_python::LANGUAGE.into()),
+        "go" => Some(tree_sitter_go::LANGUAGE.into()),
+        _ => None,
+    }
+}
+
+fn collect_tree_sitter_nodes(node: Node, content: &str, language: &str, result: &mut AstResult) {
+    match language {
+        "rust" => collect_rust_node(node, content, result),
+        "javascript" | "typescript" => collect_js_ts_node(node, content, result),
+        "python" => collect_python_node(node, content, result),
+        "go" => collect_go_node(node, content, result),
+        _ => {}
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_tree_sitter_nodes(child, content, language, result);
+    }
+}
+
+fn collect_rust_node(node: Node, content: &str, result: &mut AstResult) {
+    let kind = match node.kind() {
+        "function_item" => SymbolKind::Function,
+        "struct_item" => SymbolKind::Struct,
+        "enum_item" => SymbolKind::Enum,
+        "trait_item" => SymbolKind::Trait,
+        "impl_item" => SymbolKind::Class,
+        "use_declaration" => {
+            if let Some(import) = node_text(node, content).strip_prefix("use ") {
+                result
+                    .imports
+                    .push(import.trim_end_matches(';').trim().to_string());
+            }
+            return;
+        }
+        _ => return,
+    };
+
+    if let Some(name) = symbol_name(node, content) {
+        result.symbols.push(Symbol {
+            name,
+            kind,
+            line: node.start_position().row + 1,
+            end_line: Some(node.end_position().row + 1),
+            signature: symbol_signature(node, content),
+        });
+    }
+}
+
+fn collect_js_ts_node(node: Node, content: &str, result: &mut AstResult) {
+    let kind = match node.kind() {
+        "function_declaration" => SymbolKind::Function,
+        "class_declaration" => SymbolKind::Class,
+        "method_definition" => SymbolKind::Method,
+        "import_statement" => {
+            if let Some(import) = import_source(node, content) {
+                result.imports.push(import);
+            }
+            return;
+        }
+        _ => return,
+    };
+
+    if let Some(name) = symbol_name(node, content) {
+        result.symbols.push(Symbol {
+            name,
+            kind,
+            line: node.start_position().row + 1,
+            end_line: Some(node.end_position().row + 1),
+            signature: symbol_signature(node, content),
+        });
+    }
+}
+
+fn collect_python_node(node: Node, content: &str, result: &mut AstResult) {
+    let kind = match node.kind() {
+        "function_definition" => SymbolKind::Function,
+        "class_definition" => SymbolKind::Class,
+        "import_statement" | "import_from_statement" => {
+            result
+                .imports
+                .push(node_text(node, content).trim().to_string());
+            return;
+        }
+        _ => return,
+    };
+
+    if let Some(name) = symbol_name(node, content) {
+        result.symbols.push(Symbol {
+            name,
+            kind,
+            line: node.start_position().row + 1,
+            end_line: Some(node.end_position().row + 1),
+            signature: symbol_signature(node, content),
+        });
+    }
+}
+
+fn collect_go_node(node: Node, content: &str, result: &mut AstResult) {
+    let kind = match node.kind() {
+        "function_declaration" => SymbolKind::Function,
+        "method_declaration" => SymbolKind::Method,
+        "type_spec" => SymbolKind::Type,
+        "import_spec" => {
+            if let Some(import) = import_source(node, content) {
+                result.imports.push(import);
+            }
+            return;
+        }
+        _ => return,
+    };
+
+    if let Some(name) = symbol_name(node, content) {
+        result.symbols.push(Symbol {
+            name,
+            kind,
+            line: node.start_position().row + 1,
+            end_line: Some(node.end_position().row + 1),
+            signature: symbol_signature(node, content),
+        });
+    }
+}
+
+fn symbol_name(node: Node, content: &str) -> Option<String> {
+    node.child_by_field_name("name")
+        .or_else(|| node.child_by_field_name("type"))
+        .or_else(|| first_named_child_of_kind(node, "identifier"))
+        .or_else(|| first_named_child_of_kind(node, "type_identifier"))
+        .map(|name| node_text(name, content).trim().to_string())
+        .filter(|name| !name.is_empty())
+}
+
+fn first_named_child_of_kind<'a>(node: Node<'a>, kind: &str) -> Option<Node<'a>> {
+    let mut cursor = node.walk();
+    node.named_children(&mut cursor)
+        .find(|child| child.kind() == kind)
+}
+
+fn import_source(node: Node, content: &str) -> Option<String> {
+    node.child_by_field_name("source")
+        .or_else(|| node.child_by_field_name("path"))
+        .or_else(|| first_string_child(node))
+        .map(|source| trim_quotes(node_text(source, content).trim()).to_string())
+        .filter(|source| !source.is_empty())
+}
+
+fn first_string_child(node: Node) -> Option<Node> {
+    let mut cursor = node.walk();
+    node.named_children(&mut cursor)
+        .find(|child| child.kind().contains("string") || child.kind().contains("literal"))
+}
+
+fn trim_quotes(value: &str) -> &str {
+    value.trim_matches('"').trim_matches('\'').trim_matches('`')
+}
+
+fn symbol_signature(node: Node, content: &str) -> Option<String> {
+    let text = node_text(node, content);
+    text.lines()
+        .next()
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty())
+}
+
+fn node_text<'a>(node: Node, content: &'a str) -> &'a str {
+    node.utf8_text(content.as_bytes()).unwrap_or("")
 }
 
 fn parse_rust(content: &str, result: &mut AstResult) {

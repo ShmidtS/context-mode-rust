@@ -1,3 +1,6 @@
+mod doctor;
+mod setup;
+
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
@@ -20,6 +23,10 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Initialize the context-mode environment
+    Setup,
+    /// Check the context-mode installation
+    Doctor,
     /// Start the MCP stdio server
     Serve,
     /// Search the knowledge base
@@ -51,6 +58,12 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.command {
+        Some(Commands::Setup) => {
+            setup::run()?;
+        }
+        Some(Commands::Doctor) => {
+            doctor::run().await?;
+        }
         Some(Commands::Serve) => {
             info!("Starting Context Mode MCP stdio server");
             context_mode_server::server::run_server().await?;
@@ -66,7 +79,8 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Commands::Index { path, repo }) => {
             let mut conn = open_db(&args.db)?;
-            let results = local_indexer::index_repository(&mut conn, &repo, &path)?;
+            let provider = context_mode_core::embedding::OllamaEmbeddingProvider::new();
+            let results = local_indexer::index_repository(&mut conn, &repo, &path, &provider)?;
             let json = serde_json::to_string_pretty(&results)?;
             println!("{}", json);
         }
@@ -117,5 +131,17 @@ mod tests {
         assert!(
             matches!(args.command, Some(Commands::Index { path, repo }) if path == PathBuf::from("/tmp/src") && repo == "r1")
         );
+    }
+
+    #[test]
+    fn test_cli_parse_setup() {
+        let args = Args::parse_from(["context-mode", "setup"]);
+        assert!(matches!(args.command, Some(Commands::Setup)));
+    }
+
+    #[test]
+    fn test_cli_parse_doctor() {
+        let args = Args::parse_from(["context-mode", "doctor"]);
+        assert!(matches!(args.command, Some(Commands::Doctor)));
     }
 }

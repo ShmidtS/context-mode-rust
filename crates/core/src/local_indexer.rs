@@ -8,7 +8,7 @@ use walkdir::WalkDir;
 use crate::chunker::chunk_by_tokens;
 use crate::db_schema;
 use crate::db_schema::FileRecord;
-use crate::embedding::{EmbeddingProvider, ZeroEmbeddingProvider};
+use crate::embedding::EmbeddingProvider;
 use crate::types::IndexResult;
 
 /// Metadata collected from a file on disk before indexing.
@@ -97,11 +97,19 @@ pub fn diff_with_db(
     Ok((to_add, to_remove))
 }
 
-/// Index a single file: chunk, insert into DB, store zero vector.
+fn block_on_future<F: std::future::Future>(f: F) -> F::Output {
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => handle.block_on(f),
+        Err(_) => tokio::runtime::Runtime::new().unwrap().block_on(f),
+    }
+}
+
+/// Index a single file: chunk, insert into DB, store embeddings via `provider`.
 pub fn index_file(
     conn: &mut Connection,
     repo: &str,
     file: &FileMeta,
+    provider: &impl EmbeddingProvider,
 ) -> anyhow::Result<IndexResult> {
     let content = std::fs::read_to_string(&file.path).unwrap_or_default();
     let path_str = file.path.to_string_lossy().into_owned();
@@ -125,8 +133,6 @@ pub fn index_file(
     let mut total = 0usize;
     let mut code = 0usize;
 
-    let provider = ZeroEmbeddingProvider::new();
-
     for chunk in chunks.iter() {
         let chunk_id =
             db_schema::insert_chunk(conn, &chunk.content, "", "", &path_str, repo, 0, 0)?;
@@ -134,33 +140,8 @@ pub fn index_file(
         code += 1;
 
         let texts = vec![chunk.content.clone()];
-        let embeddings = provider.embed(&texts);
-        // block_on is not available here; use a tiny runtime or thread for sync context.
-        let vecs = std::thread::scope(|s| {
-            s.spawn(|| {
-                // Run a minimal block_on for the single future.
-                use std::future::Future;
-                use std::pin::pin;
-                use std::sync::Arc;
-                use std::task::{Context, Poll, Wake, Waker};
-                struct NoopWaker;
-                impl Wake for NoopWaker {
-                    fn wake(self: Arc<Self>) {}
-                }
-                let waker = Waker::from(Arc::new(NoopWaker));
-                let mut context = Context::from_waker(&waker);
-                let mut future = pin!(embeddings);
-                loop {
-                    match future.as_mut().poll(&mut context) {
-                        Poll::Ready(output) => break output,
-                        Poll::Pending => std::thread::yield_now(),
-                    }
-                }
-            })
-            .join()
-            .unwrap()
-        });
-        let vec = vecs.map_err(|e| anyhow::anyhow!("embed error: {}", e))?;
+        let embeddings = block_on_future(provider.embed(&texts));
+        let vec = embeddings.map_err(|e| anyhow::anyhow!("embed error: {}", e))?;
         let bytes: Vec<u8> = vec[0].iter().flat_map(|f| f.to_le_bytes()).collect();
         let _ = db_schema::insert_vector(conn, chunk_id, &bytes);
     }
@@ -178,6 +159,7 @@ pub fn index_repository(
     conn: &mut Connection,
     repo: &str,
     root: impl AsRef<Path>,
+    provider: &impl EmbeddingProvider,
 ) -> anyhow::Result<Vec<IndexResult>> {
     let metas = collect_file_metas(root);
     let (to_add, to_remove) = diff_with_db(conn, repo, &metas)?;
@@ -189,7 +171,7 @@ pub fn index_repository(
 
     let mut results = Vec::new();
     for meta in to_add {
-        match index_file(conn, repo, &meta) {
+        match index_file(conn, repo, &meta, provider) {
             Ok(r) => results.push(r),
             Err(e) => tracing::warn!("failed to index {:?}: {}", meta.path, e),
         }
@@ -278,7 +260,8 @@ mod tests {
             mtime: 0,
         };
 
-        let result = index_file(&mut conn, "repo", &meta).unwrap();
+        let provider = crate::embedding::ZeroEmbeddingProvider::new();
+        let result = index_file(&mut conn, "repo", &meta, &provider).unwrap();
         assert_eq!(result.label, meta.path.to_string_lossy());
         assert!(result.total_chunks > 0);
     }
@@ -292,7 +275,8 @@ mod tests {
         let file_path = root.join("main.rs");
         std::fs::write(&file_path, b"fn main() {}").unwrap();
 
-        let results = index_repository(&mut conn, "repo", &root).unwrap();
+        let provider = crate::embedding::ZeroEmbeddingProvider::new();
+        let results = index_repository(&mut conn, "repo", &root, &provider).unwrap();
         assert!(!results.is_empty(), "results should not be empty");
     }
 }

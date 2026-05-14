@@ -19,3 +19,4 @@ context-mode-core = { path = "../core" }
 context-mode-utils = { path = "../utils" }
 
 [dev-dependencies]
+tempfile = { workspace = true }
