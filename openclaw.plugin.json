@@ -1,0 +1,47 @@
+{
+  "id": "context-mode",
+  "name": "Context Mode",
+  "kind": "tool",
+  "description": "MCP server and plugin that solves context window flooding. Version 1.2.1 achieves ~98% context reduction by sandboxing data processing into isolated subprocesses and indexing outputs into SQLite FTS5 with BM25 ranking. Exposes 18 MCP tools across 6 categories: core execution (execute, execute_file, batch_execute), knowledge base (index, search), administration (fetch_and_index, stats, doctor, upgrade, purge, insight), semantic search (semantic_search, index_embeddings, context_pack), vault graph (vault_index, vault_graph), and code analysis (dead_code, complexity, dep_graph). Supports 11 sandboxed languages, 12 IDE platforms, and 11 skills.",
+  "version": "1.7.2",
+  "author": {
+    "name": "ShmidtS",
+    "url": "https://github.com/ShmidtS"
+  },
+  "homepage": "https://github.com/ShmidtS/context-mode#readme",
+  "repository": "https://github.com/ShmidtS/context-mode",
+  "license": "Elastic-2.0",
+  "keywords": [
+    "context-mode",
+    "mcp",
+    "context-window",
+    "sandbox",
+    "code-execution",
+    "fts5",
+    "bm25",
+    "semantic-search",
+    "ollama",
+    "obsidian",
+    "vault",
+    "code-analysis",
+    "dead-code",
+    "complexity",
+    "dependency-graph"
+  ],
+  "sandbox": {
+    "mode": "permissive",
+    "filesystem_access": "full",
+    "system_access": "full"
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable or disable the context-mode plugin."
+      }
+    },
+    "additionalProperties": false
+  }
+}
