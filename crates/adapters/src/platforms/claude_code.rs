@@ -8,11 +8,40 @@ pub struct ClaudeCodeAdapter;
 
 impl HookAdapter for ClaudeCodeAdapter {
     fn install(&self, _plugin_root: &str) -> Result<Vec<String>, AdapterError> {
-        Ok(Vec::new())
+        let base = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        let installer = crate::hook_runtime::HookInstaller::new(base);
+        let hook_types = [
+            "posttooluse",
+            "pretooluse",
+            "precompact",
+            "sessionstart",
+            "userpromptsubmit",
+        ];
+        let mut installed = Vec::new();
+        for hook_type in &hook_types {
+            let script = build_hook_script(hook_type);
+            let path = installer.install_hook("claude-code", hook_type, &script)?;
+            installed.push(format!("Installed {} hook at {}", hook_type, path.display()));
+        }
+        Ok(installed)
     }
 
     fn uninstall(&self) -> Result<Vec<String>, AdapterError> {
-        Ok(Vec::new())
+        let base = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        let installer = crate::hook_runtime::HookInstaller::new(base);
+        let hook_types = [
+            "posttooluse",
+            "pretooluse",
+            "precompact",
+            "sessionstart",
+            "userpromptsubmit",
+        ];
+        let mut removed = Vec::new();
+        for hook_type in &hook_types {
+            installer.uninstall_hook("claude-code", hook_type)?;
+            removed.push(format!("Uninstalled {} hook", hook_type));
+        }
+        Ok(removed)
     }
 
     fn diagnostics(&self, _plugin_root: &str) -> Result<Vec<DiagnosticResult>, AdapterError> {
@@ -32,6 +61,18 @@ impl HookAdapter for ClaudeCodeAdapter {
 
     fn platform_id(&self) -> PlatformId {
         PlatformId::ClaudeCode
+    }
+}
+
+fn build_hook_script(hook_type: &str) -> String {
+    if cfg!(windows) {
+        format!("@echo off\ncontext-mode hook claude-code {} %*\n", hook_type)
+    } else {
+        format!(
+            "#!/bin/sh\ncontext-mode hook claude-code {} \"{}\"\n",
+            hook_type,
+            "$@"
+        )
     }
 }
 

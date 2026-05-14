@@ -1,4 +1,5 @@
 mod doctor;
+mod hook;
 mod setup;
 
 use std::path::PathBuf;
@@ -44,6 +45,13 @@ enum Commands {
         #[arg(short, long, default_value = "default")]
         repo: String,
     },
+    /// Run a platform hook (reads event JSON from stdin)
+    Hook {
+        /// Target platform (e.g. claude-code)
+        platform: String,
+        /// Hook type (e.g. posttooluse, pretooluse, precompact, sessionstart, userpromptsubmit)
+        hook_type: String,
+    },
 }
 
 fn open_db(path: &PathBuf) -> anyhow::Result<Connection> {
@@ -83,6 +91,9 @@ async fn main() -> anyhow::Result<()> {
             let results = local_indexer::index_repository(&mut conn, &repo, &path, &provider)?;
             let json = serde_json::to_string_pretty(&results)?;
             println!("{}", json);
+        }
+        Some(Commands::Hook { platform, hook_type }) => {
+            hook::run(&platform, &hook_type).await?;
         }
         None => {
             error!("No command provided. Use --help for usage.");
@@ -143,5 +154,18 @@ mod tests {
     fn test_cli_parse_doctor() {
         let args = Args::parse_from(["context-mode", "doctor"]);
         assert!(matches!(args.command, Some(Commands::Doctor)));
+    }
+
+    #[test]
+    fn test_cli_parse_hook() {
+        let args = Args::parse_from([
+            "context-mode",
+            "hook",
+            "claude-code",
+            "posttooluse",
+        ]);
+        assert!(
+            matches!(args.command, Some(Commands::Hook { platform, hook_type }) if platform == "claude-code" && hook_type == "posttooluse")
+        );
     }
 }
