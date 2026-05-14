@@ -1,7 +1,8 @@
 {
   "mcpServers": {
     "context-mode-rust": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/bin/context-mode-server.cmd"
+      "command": "cargo",
+      "args": ["run", "--bin", "context-mode-server", "--release", "--quiet"]
     }
   }
 }
