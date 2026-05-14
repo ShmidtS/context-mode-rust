@@ -19,7 +19,7 @@ JetBrains configures MCP servers via the Settings UI, not a file.
    - **Command:** `context-mode-server`
 4. Click **OK** to save.
 
-Alternatively, install the MCP server via `cargo install --path crates/server` and set the command to `context-mode-server`.
+Alternatively, install the MCP server via `cargo install --path crates/mcp` and set the command to `context-mode-server`.
 
 Example MCP config (for reference): [`configs/jetbrains-copilot/mcp.json`](../configs/jetbrains-copilot/mcp.json)
 

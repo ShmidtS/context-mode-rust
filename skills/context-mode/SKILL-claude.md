@@ -44,13 +44,13 @@ Hooks are registered in `settings.json` under the `hooks` key. Each hook entry h
     "PreToolUse": [
       {
         "matcher": "Bash|WebFetch|Read|Grep|Task|mcp__plugin_context-mode_context-mode__ctx_execute",
-        "hooks": [{ "type": "command", "command": "node {pluginRoot}/hooks/pretooluse.mjs" }]
+        "hooks": [{ "type": "command", "command": "context-mode hook claude-code pretooluse" }]
       }
     ],
     "SessionStart": [
       {
         "matcher": "",
-        "hooks": [{ "type": "command", "command": "node {pluginRoot}/hooks/sessionstart.mjs" }]
+        "hooks": [{ "type": "command", "command": "context-mode hook claude-code sessionstart" }]
       }
     ]
   }
@@ -101,10 +101,9 @@ Claude Code supports subagents. The PreToolUse hook automatically routes context
 
 ## Hook Scripts
 
-Located in `{pluginRoot}/hooks/`:
-- `pretooluse.mjs` -- Routes large-output tools to context-mode
-- `posttooluse.mjs` -- Indexes tool output, injects context
-- `precompact.mjs` -- Preserves context across compaction
-- `sessionstart.mjs` -- Injects routing instructions at session start
-- `userpromptsubmit.mjs` -- Processes user prompts
-- `routing.mjs` -- Core routing logic
+Hook commands dispatched via the Rust CLI (`context-mode hook claude-code <event>`):
+- `pretooluse` -- Routes large-output tools to context-mode
+- `posttooluse` -- Indexes tool output, injects context
+- `precompact` -- Preserves context across compaction
+- `sessionstart` -- Injects routing instructions at session start
+- `userpromptsubmit` -- Processes user prompts

@@ -23,7 +23,7 @@ git clone https://github.com/ShmidtS/context-mode-rust.git context-mode-rust
 cd context-mode-rust && cargo build --workspace --release
 ```
 
-This produces `context-mode` and `context-mode-server` binaries in `target/release/`. Add them to PATH (via `cargo install --path crates/cli` / `cargo install --path crates/server`), which is required for:
+This produces `context-mode` and `context-mode-server` binaries in `target/release/`. Add them to PATH (via `cargo install --path crates/cli` / `cargo install --path crates/mcp`), which is required for:
 - **MCP server:** `"command": "context-mode-server"`
 - **Hook dispatcher:** `context-mode hook <platform> <event>`
 - **Utility commands:** `context-mode doctor`, `context-mode upgrade`

@@ -29,7 +29,7 @@ cd context-mode-rust
 cargo build --workspace --release
 # binaries are in target/release/context-mode and target/release/context-mode-server
 cargo install --path crates/cli    # optional: adds `context-mode` to PATH
-cargo install --path crates/server # optional: adds `context-mode-server` to PATH
+cargo install --path crates/mcp   # optional: adds `context-mode-server` to PATH
 ```
 
 Then register the MCP server in your AI client. For **Claude Code**:

@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "context-mode-rust": {
-      "command": "cargo",
-      "args": ["run", "--bin", "context-mode-server", "--release", "--quiet"]
-    }
-  }
-}

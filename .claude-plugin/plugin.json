@@ -1,9 +1,7 @@
 {
-  "id": "context-mode-rust",
   "name": "context-mode-rust",
-  "kind": "tool",
-  "description": "MCP server and plugin that solves context window flooding. Exposes 18 MCP tools across 6 categories: core execution (execute, execute_file, batch_execute), knowledge base (index, search), administration (fetch_and_index, stats, doctor, upgrade, purge, insight), semantic search (semantic_search, index_embeddings, context_pack), vault graph (vault_index, vault_graph), and code analysis (dead_code, complexity, dep_graph). Supports 11 sandboxed languages, 12 IDE platforms, and 11 skills.",
   "version": "1.0.6",
+  "description": "MCP server and plugin that solves context window flooding. Exposes 18 MCP tools across 6 categories: core execution (execute, execute_file, batch_execute), knowledge base (index, search), administration (fetch_and_index, stats, doctor, upgrade, purge, insight), semantic search (semantic_search, index_embeddings, context_pack), vault graph (vault_index, vault_graph), and code analysis (dead_code, complexity, dep_graph). Supports 11 sandboxed languages, 12 IDE platforms, and 11 skills.",
   "author": {
     "name": "ShmidtS",
     "url": "https://github.com/ShmidtS"
@@ -28,22 +26,13 @@
     "complexity",
     "dependency-graph"
   ],
-  "sandbox": {
-    "mode": "permissive",
-    "filesystem_access": "full",
-    "system_access": "full"
+  "mcpServers": {
+    "context-mode": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/start.mjs"
+      ]
+    }
   },
-  "configSchema": {
-    "type": "object",
-    "properties": {
-      "enabled": {
-        "type": "boolean",
-        "default": true,
-        "description": "Enable or disable the context-mode plugin."
-      }
-    },
-    "additionalProperties": false
-  },
-  "mcpServers": "./.mcp.json",
-  "skills": ["./skills/"]
+  "skills": "./skills/"
 }
