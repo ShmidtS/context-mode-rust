@@ -20,7 +20,7 @@ The context-mode adapter hooks into Pi Agent sessions specifically, intercepting
 ```bash
 cargo build --workspace --release
 cargo install --path crates/cli
-cargo install --path crates/server
+cargo install --path crates/mcp
 ```
 
 This builds the `context-mode` and `context-mode-server` binaries used by OpenClaw.
@@ -109,5 +109,5 @@ The adapter resolves project paths from Pi Agent session metadata, ensuring sess
 | File | Purpose |
 |---|---|
 | `crates/cli/` | CLI dispatcher and setup commands |
-| `crates/server/` | MCP server implementation |
+| `crates/mcp/` | MCP server implementation |
 | `configs/openclaw/AGENTS.md` | OpenClaw routing instructions |

@@ -34,4 +34,3 @@ test-analytics.mjs
 # cargo install artifacts
 /.claude-plugin/.crates.toml
 /.claude-plugin/.crates2.json
-/.claude-plugin/bin/*.exe
