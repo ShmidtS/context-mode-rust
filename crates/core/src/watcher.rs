@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use notify::{Config, Event, RecommendedWatcher, Watcher};
 use serde::{Deserialize, Serialize};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 use tracing::{error, info};
 
 /// A file-system event produced by the watcher.
@@ -43,7 +43,10 @@ impl WatchList {
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        let _ = std::fs::write(&path, serde_json::to_string_pretty(self).unwrap_or_default());
+        let _ = std::fs::write(
+            &path,
+            serde_json::to_string_pretty(self).unwrap_or_default(),
+        );
     }
 }
 
@@ -77,20 +80,18 @@ impl FileWatcher {
         let tx_clone = tx.clone();
 
         let watcher = RecommendedWatcher::new(
-            move |res: Result<Event, notify::Error>| {
-                match res {
-                    Ok(event) => {
-                        for path in event.paths {
-                            if is_ignorable(&path) {
-                                continue;
-                            }
-                            let kind = format!("{:?}", event.kind);
-                            let _ = tx_clone.try_send(WatchEvent { path, kind });
+            move |res: Result<Event, notify::Error>| match res {
+                Ok(event) => {
+                    for path in event.paths {
+                        if is_ignorable(&path) {
+                            continue;
                         }
+                        let kind = format!("{:?}", event.kind);
+                        let _ = tx_clone.try_send(WatchEvent { path, kind });
                     }
-                    Err(e) => {
-                        error!("watch error: {}", e);
-                    }
+                }
+                Err(e) => {
+                    error!("watch error: {}", e);
                 }
             },
             Config::default().with_poll_interval(Duration::from_secs(1)),
@@ -104,7 +105,10 @@ impl FileWatcher {
     }
 
     pub async fn add_path(&self, path: impl AsRef<Path>) -> anyhow::Result<()> {
-        let path = path.as_ref().canonicalize().unwrap_or_else(|_| path.as_ref().to_path_buf());
+        let path = path
+            .as_ref()
+            .canonicalize()
+            .unwrap_or_else(|_| path.as_ref().to_path_buf());
         let mut set = self.watched.lock().await;
         if set.insert(path.clone()) {
             info!("watching path: {:?}", path);
@@ -113,7 +117,10 @@ impl FileWatcher {
     }
 
     pub async fn remove_path(&self, path: impl AsRef<Path>) -> anyhow::Result<()> {
-        let path = path.as_ref().canonicalize().unwrap_or_else(|_| path.as_ref().to_path_buf());
+        let path = path
+            .as_ref()
+            .canonicalize()
+            .unwrap_or_else(|_| path.as_ref().to_path_buf());
         let mut set = self.watched.lock().await;
         set.remove(&path);
         info!("unwatched path: {:?}", path);
@@ -137,7 +144,10 @@ impl FileWatcher {
     pub async fn persist(&self) {
         let paths = self.watched_paths().await;
         let list = WatchList {
-            paths: paths.into_iter().map(|p| p.to_string_lossy().into_owned()).collect(),
+            paths: paths
+                .into_iter()
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect(),
         };
         list.save();
     }

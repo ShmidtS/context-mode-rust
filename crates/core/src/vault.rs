@@ -138,8 +138,20 @@ mod tests {
     fn test_tags() {
         let mut graph = VaultGraph::new();
         let a = graph.add_node(make_node("/vault", "a.md", "A"));
-        graph.add_tag(a, VaultTag { id: 1, tag: "rust".into() });
-        graph.add_tag(a, VaultTag { id: 2, tag: "code".into() });
+        graph.add_tag(
+            a,
+            VaultTag {
+                id: 1,
+                tag: "rust".into(),
+            },
+        );
+        graph.add_tag(
+            a,
+            VaultTag {
+                id: 2,
+                tag: "code".into(),
+            },
+        );
         let tags = graph.tags_for(a);
         assert_eq!(tags.len(), 2);
         assert!(tags.iter().any(|t| t.tag == "rust"));

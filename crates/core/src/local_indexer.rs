@@ -65,10 +65,8 @@ pub fn diff_with_db(
     disk: &[FileMeta],
 ) -> anyhow::Result<(Vec<FileMeta>, Vec<String>)> {
     let db_files = db_schema::list_files_by_repo(conn, repo)?;
-    let db_map: HashMap<String, String> = db_files
-        .into_iter()
-        .map(|r| (r.path, r.sha256))
-        .collect();
+    let db_map: HashMap<String, String> =
+        db_files.into_iter().map(|r| (r.path, r.sha256)).collect();
 
     let mut to_add = Vec::new();
     let mut to_remove = Vec::new();
@@ -130,16 +128,8 @@ pub fn index_file(
     let provider = ZeroEmbeddingProvider::new();
 
     for chunk in chunks.iter() {
-        let chunk_id = db_schema::insert_chunk(
-            conn,
-            &chunk.content,
-            "",
-            "",
-            &path_str,
-            repo,
-            0,
-            0,
-        )?;
+        let chunk_id =
+            db_schema::insert_chunk(conn, &chunk.content, "", "", &path_str, repo, 0, 0)?;
         total += 1;
         code += 1;
 
@@ -166,7 +156,9 @@ pub fn index_file(
                         Poll::Pending => std::thread::yield_now(),
                     }
                 }
-            }).join().unwrap()
+            })
+            .join()
+            .unwrap()
         });
         let vec = vecs.map_err(|e| anyhow::anyhow!("embed error: {}", e))?;
         let bytes: Vec<u8> = vec[0].iter().flat_map(|f| f.to_le_bytes()).collect();
@@ -182,7 +174,11 @@ pub fn index_file(
 }
 
 /// Full repository indexing pipeline.
-pub fn index_repository(conn: &mut Connection, repo: &str, root: impl AsRef<Path>) -> anyhow::Result<Vec<IndexResult>> {
+pub fn index_repository(
+    conn: &mut Connection,
+    repo: &str,
+    root: impl AsRef<Path>,
+) -> anyhow::Result<Vec<IndexResult>> {
     let metas = collect_file_metas(root);
     let (to_add, to_remove) = diff_with_db(conn, repo, &metas)?;
 
@@ -232,7 +228,11 @@ mod tests {
         std::fs::write(&file_path, b"fn main() {}").unwrap();
 
         let metas = collect_file_metas(&root);
-        assert!(!metas.is_empty(), "metas should not be empty, root={:?}", root);
+        assert!(
+            !metas.is_empty(),
+            "metas should not be empty, root={:?}",
+            root
+        );
 
         let (to_add, to_remove) = diff_with_db(&conn, "test-repo", &metas).unwrap();
         assert!(!to_add.is_empty());
@@ -252,8 +252,16 @@ mod tests {
         }
 
         let (to_add2, to_remove2) = diff_with_db(&conn, "test-repo", &metas).unwrap();
-        assert!(to_add2.is_empty(), "to_add2 should be empty but got {:?}", to_add2);
-        assert!(to_remove2.is_empty(), "to_remove2 should be empty but got {:?}", to_remove2);
+        assert!(
+            to_add2.is_empty(),
+            "to_add2 should be empty but got {:?}",
+            to_add2
+        );
+        assert!(
+            to_remove2.is_empty(),
+            "to_remove2 should be empty but got {:?}",
+            to_remove2
+        );
     }
 
     #[test]

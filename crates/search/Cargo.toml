@@ -1,0 +1,22 @@
+[package]
+name = "context-mode-search"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+rusqlite = { workspace = true }
+tokio = { workspace = true }
+context-mode-core = { path = "../core" }
+context-mode-store = { path = "../store" }
+context-mode-utils = { path = "../utils" }
+
+[dev-dependencies]

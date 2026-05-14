@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use axum::{
+    Json, Router,
     extract::State,
     routing::{get, post},
-    Json, Router,
 };
 use context_mode_core::db_schema;
 use context_mode_core::local_indexer;
@@ -36,7 +36,7 @@ impl AppState {
         F: FnOnce(&mut Connection) -> anyhow::Result<T>,
     {
         let mut conn = Connection::open(&self.db_path)?;
-        db_schema::init_local_schema(&mut conn)?;
+        db_schema::init_local_schema(&conn)?;
         f(&mut conn)
     }
 }
@@ -66,11 +66,11 @@ async fn search_handler(
     State(state): State<AppState>,
     Json(req): Json<SearchRequest>,
 ) -> Result<Json<SearchResponse>, String> {
-    let results = tokio::task::block_in_place(|| {
-        match req.repo {
-            Some(repo) => state.with_conn(|conn| search::search_repo(conn, &repo, &req.query, req.limit)),
-            None => state.with_conn(|conn| search::search(conn, &req.query, req.limit)),
+    let results = tokio::task::block_in_place(|| match req.repo {
+        Some(repo) => {
+            state.with_conn(|conn| search::search_repo(conn, &repo, &req.query, req.limit))
         }
+        None => state.with_conn(|conn| search::search(conn, &req.query, req.limit)),
     })
     .map_err(|e| e.to_string())?;
     Ok(Json(SearchResponse { results }))
@@ -98,7 +98,9 @@ async fn index_handler(
     Ok(Json(IndexResponse { results }))
 }
 
-async fn vault_nodes_handler(State(state): State<AppState>) -> Result<Json<Vec<VaultNode>>, String> {
+async fn vault_nodes_handler(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<VaultNode>>, String> {
     let graph = state.graph.lock().map_err(|e| e.to_string())?;
     let nodes = graph.all_nodes().into_iter().cloned().collect();
     Ok(Json(nodes))
@@ -113,8 +115,8 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| PathBuf::from("context-mode.db"));
 
     {
-        let mut conn = Connection::open(&db_path)?;
-        db_schema::init_local_schema(&mut conn)?;
+        let conn = Connection::open(&db_path)?;
+        db_schema::init_local_schema(&conn)?;
     }
 
     let state = AppState {
@@ -161,7 +163,12 @@ mod tests {
             .with_state(state);
 
         let response = app
-            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);

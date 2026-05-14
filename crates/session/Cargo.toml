@@ -1,0 +1,24 @@
+[package]
+name = "context-mode-session"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+rusqlite = { workspace = true }
+tokio = { workspace = true }
+regex = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+context-mode-core = { path = "../core" }
+context-mode-utils = { path = "../utils" }
+
+[dev-dependencies]

@@ -1,0 +1,1 @@
+// TODO: implement Cursor adapter.

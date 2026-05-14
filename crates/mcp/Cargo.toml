@@ -1,35 +1,27 @@
 [package]
-name = "context-mode-server"
+name = "context-mode-mcp"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
-[[bin]]
-name = "context-mode-server"
-path = "src/main.rs"
-
 [dependencies]
-axum = { workspace = true }
-tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+thiserror = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+tower = { workspace = true }
 context-mode-core = { path = "../core" }
-context-mode-utils = { path = "../utils" }
 context-mode-store = { path = "../store" }
 context-mode-session = { path = "../session" }
 context-mode-search = { path = "../search" }
 context-mode-vault = { path = "../vault" }
 context-mode-tools = { path = "../tools" }
 context-mode-adapters = { path = "../adapters" }
-context-mode-mcp = { path = "../mcp" }
-
-rusqlite = { workspace = true }
+context-mode-utils = { path = "../utils" }
 
 [dev-dependencies]
-tower = { workspace = true }
-tempfile = { workspace = true }

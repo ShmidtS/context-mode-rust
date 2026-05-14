@@ -1,0 +1,11 @@
+pub mod claude_code;
+pub mod codex;
+pub mod cursor;
+pub mod gemini_cli;
+pub mod jetbrains_copilot;
+pub mod kiro;
+pub mod openclaw;
+pub mod opencode;
+pub mod qwen_code;
+pub mod vscode_copilot;
+pub mod zed;

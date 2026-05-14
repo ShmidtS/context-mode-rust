@@ -43,8 +43,8 @@ enum Commands {
 }
 
 fn open_db(path: &PathBuf) -> anyhow::Result<Connection> {
-    let mut conn = Connection::open(path)?;
-    db_schema::init_local_schema(&mut conn)?;
+    let conn = Connection::open(path)?;
+    db_schema::init_local_schema(&conn)?;
     Ok(conn)
 }
 
@@ -58,11 +58,7 @@ async fn main() -> anyhow::Result<()> {
             info!("Starting server on port {}", port);
             info!("Run: context-mode-server --port {}", port);
         }
-        Some(Commands::Search {
-            query,
-            repo,
-            limit,
-        }) => {
+        Some(Commands::Search { query, repo, limit }) => {
             let conn = open_db(&args.db)?;
             let results = match repo {
                 Some(r) => search::search_repo(&conn, &r, &query, limit)?,
@@ -97,13 +93,32 @@ mod tests {
 
     #[test]
     fn test_cli_parse_search() {
-        let args = Args::parse_from(["context-mode", "search", "hello", "--repo", "myrepo", "--limit", "5"]);
-        assert!(matches!(args.command, Some(Commands::Search { query, repo, limit }) if query == "hello" && repo == Some("myrepo".into()) && limit == 5));
+        let args = Args::parse_from([
+            "context-mode",
+            "search",
+            "hello",
+            "--repo",
+            "myrepo",
+            "--limit",
+            "5",
+        ]);
+        assert!(
+            matches!(args.command, Some(Commands::Search { query, repo, limit }) if query == "hello" && repo == Some("myrepo".into()) && limit == 5)
+        );
     }
 
     #[test]
     fn test_cli_parse_index() {
-        let args = Args::parse_from(["context-mode", "index", "--path", "/tmp/src", "--repo", "r1"]);
-        assert!(matches!(args.command, Some(Commands::Index { path, repo }) if path == PathBuf::from("/tmp/src") && repo == "r1"));
+        let args = Args::parse_from([
+            "context-mode",
+            "index",
+            "--path",
+            "/tmp/src",
+            "--repo",
+            "r1",
+        ]);
+        assert!(
+            matches!(args.command, Some(Commands::Index { path, repo }) if path == PathBuf::from("/tmp/src") && repo == "r1")
+        );
     }
 }
