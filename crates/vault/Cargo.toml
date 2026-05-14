@@ -21,5 +21,6 @@ sha2 = { workspace = true }
 hex = { workspace = true }
 context-mode-core = { path = "../core" }
 context-mode-utils = { path = "../utils" }
+once_cell = { workspace = true }
 
 [dev-dependencies]

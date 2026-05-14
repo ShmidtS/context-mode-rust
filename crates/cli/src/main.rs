@@ -20,11 +20,8 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Start the HTTP server
-    Serve {
-        #[arg(short, long, default_value = "3000")]
-        port: u16,
-    },
+    /// Start the MCP stdio server
+    Serve,
     /// Search the knowledge base
     Search {
         query: String,
@@ -54,9 +51,9 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.command {
-        Some(Commands::Serve { port }) => {
-            info!("Starting server on port {}", port);
-            info!("Run: context-mode-server --port {}", port);
+        Some(Commands::Serve) => {
+            info!("Starting Context Mode MCP stdio server");
+            context_mode_server::server::run_server().await?;
         }
         Some(Commands::Search { query, repo, limit }) => {
             let conn = open_db(&args.db)?;
@@ -87,8 +84,8 @@ mod tests {
 
     #[test]
     fn test_cli_parse_serve() {
-        let args = Args::parse_from(["context-mode", "--db", "test.db", "serve", "--port", "8080"]);
-        assert!(matches!(args.command, Some(Commands::Serve { port }) if port == 8080));
+        let args = Args::parse_from(["context-mode", "--db", "test.db", "serve"]);
+        assert!(matches!(args.command, Some(Commands::Serve)));
     }
 
     #[test]

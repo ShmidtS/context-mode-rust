@@ -1,5 +1,5 @@
 [package]
-name = "context-mode-server"
+name = "context-mode-insight"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -7,7 +7,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [[bin]]
-name = "context-mode-server"
+name = "context-mode-insight"
 path = "src/main.rs"
 
 [dependencies]
@@ -26,7 +26,7 @@ context-mode-search = { path = "../search" }
 context-mode-vault = { path = "../vault" }
 context-mode-tools = { path = "../tools" }
 context-mode-adapters = { path = "../adapters" }
-context-mode-mcp = { path = "../mcp" }
+context-mode-server = { path = "../mcp" }
 
 rusqlite = { workspace = true }
 

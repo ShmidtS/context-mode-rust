@@ -13,6 +13,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
+once_cell = "1.19"
 context-mode-core = { path = "../core" }
 context-mode-store = { path = "../store" }
 context-mode-session = { path = "../session" }

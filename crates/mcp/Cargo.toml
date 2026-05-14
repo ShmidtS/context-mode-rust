@@ -1,5 +1,5 @@
 [package]
-name = "context-mode-mcp"
+name = "context-mode-server"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -23,5 +23,13 @@ context-mode-vault = { path = "../vault" }
 context-mode-tools = { path = "../tools" }
 context-mode-adapters = { path = "../adapters" }
 context-mode-utils = { path = "../utils" }
+
+[dependencies.rmcp]
+version = "1.7"
+features = ["server", "macros", "transport-io"]
+
+[[bin]]
+name = "context-mode-server"
+path = "src/main.rs"
 
 [dev-dependencies]
