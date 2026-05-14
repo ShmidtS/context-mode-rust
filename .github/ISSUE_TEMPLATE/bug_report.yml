@@ -121,7 +121,7 @@ body:
       description: |
         Minimal steps so anyone on your platform can reproduce this.
       placeholder: |
-        1. Install: npm install -g context-mode@1.0.50
+        1. Install: git clone https://github.com/ShmidtS/context-mode-rust.git && cd context-mode-rust && cargo build --workspace --release
         2. Configure: (paste your mcp config)
         3. Send prompt: "..."
         4. See error: "..."

@@ -12,19 +12,18 @@ Licensed under Elastic License 2.0.
 ```bash
 git clone https://github.com/ShmidtS/context-mode-rust.git context-mode-rust
 cd context-mode-rust
-npm install
-npm run build
+cargo build --workspace --release
 ```
 
 **Symlink the cache** so Claude Code loads your local clone instead of the marketplace version:
 
 ```bash
-ls ~/.claude/plugins/cache/context-mode/context-mode/
+ls ~/.claude/plugins/cache/context-mode-rust/context-mode-rust/
 # Replace 0.9.23 with your actual version
-mv ~/.claude/plugins/cache/context-mode/context-mode/0.9.23 \
-   ~/.claude/plugins/cache/context-mode/context-mode/0.9.23.bak
-ln -s /path/to/your/clone/context-mode \
-   ~/.claude/plugins/cache/context-mode/context-mode/0.9.23
+mv ~/.claude/plugins/cache/context-mode-rust/context-mode-rust/0.9.23 \
+   ~/.claude/plugins/cache/context-mode-rust/context-mode-rust/0.9.23.bak
+ln -s /path/to/your/clone/context-mode-rust \
+   ~/.claude/plugins/cache/context-mode-rust/context-mode-rust/0.9.23
 ```
 
 Override PreToolUse in `~/.claude/settings.json`:

@@ -1,10 +1,10 @@
 # JetBrains Copilot Setup
 
-Setup guide for using context-mode with JetBrains IDEs (IntelliJ IDEA, WebStorm, PyCharm, etc.) via the GitHub Copilot plugin.
+Setup guide for using context-mode-rust with JetBrains IDEs (IntelliJ IDEA, WebStorm, PyCharm, etc.) via the GitHub Copilot plugin.
 
 ## Prerequisites
 
-- **Node.js 18+** (`node --version`)
+- **Rust 1.85+** with `context-mode` and `context-mode-server` binaries in PATH (`cargo build --workspace --release`)
 - **JetBrains IDE** — any JetBrains IDE (IntelliJ IDEA, WebStorm, PyCharm, GoLand, Rider, CLion, etc.)
 - **GitHub Copilot plugin v1.5.57+** — install from Settings > Plugins > Marketplace, search "GitHub Copilot"
 
@@ -15,12 +15,11 @@ JetBrains configures MCP servers via the Settings UI, not a file.
 1. Open your JetBrains IDE.
 2. Go to **Settings > Tools > AI Assistant > Model Context Protocol (MCP)**.
 3. Click **Add Server** and configure:
-   - **Name:** `context-mode`
-   - **Command:** `npx`
-   - **Args:** `-y context-mode`
+   - **Name:** `context-mode-rust`
+   - **Command:** `context-mode-server`
 4. Click **OK** to save.
 
-Alternatively, you can use a global install (`npm install -g context-mode`) and set the command to `context-mode` with no args.
+Alternatively, install the MCP server via `cargo install --path crates/server` and set the command to `context-mode-server`.
 
 Example MCP config (for reference): [`configs/jetbrains-copilot/mcp.json`](../configs/jetbrains-copilot/mcp.json)
 
@@ -29,10 +28,10 @@ Example MCP config (for reference): [`configs/jetbrains-copilot/mcp.json`](../co
 Install hooks using the automated setup command:
 
 ```bash
-npx context-mode@latest setup --adapter jetbrains-copilot
+context-mode setup --adapter jetbrains-copilot
 ```
 
-This creates `.github/hooks/context-mode.json` in your project with the following hook configuration:
+This creates `.github/hooks/context-mode-rust.json` in your project with the following hook configuration:
 
 ```json
 {
@@ -57,7 +56,7 @@ Full hook config reference: [`configs/jetbrains-copilot/hooks.json`](../configs/
 
 ## Upgrade
 
-Update context-mode to the latest version:
+Update context-mode-rust to the latest version:
 
 ```
 context-mode upgrade
@@ -82,23 +81,23 @@ You can also verify context savings by typing `ctx stats` in a Copilot chat sess
 ## Troubleshooting
 
 **MCP server not connecting**
-- Ensure Node.js 18+ is in your PATH.
+- Ensure `context-mode-server` is in your PATH.
 - Restart the JetBrains IDE after adding the MCP server.
-- Check Settings > Tools > AI Assistant > MCP and confirm "context-mode" shows a green status indicator.
+- Check Settings > Tools > AI Assistant > MCP and confirm "context-mode-rust" shows a green status indicator.
 
 **Hooks not firing**
-- Verify `.github/hooks/context-mode.json` exists in your project root.
+- Verify `.github/hooks/context-mode-rust.json` exists in your project root.
 - JetBrains Copilot reads hooks from `.github/hooks/` — the same location as VS Code Copilot.
-- Re-run `npx context-mode@latest setup --adapter jetbrains-copilot` to regenerate the hook config.
+- Re-run `context-mode setup --adapter jetbrains-copilot` to regenerate the hook config.
 
 **"context-mode: command not found"**
-- Install globally: `npm install -g context-mode`
+- Install the CLI: `cargo install --path crates/cli`
 - Verify: `which context-mode` should return a path.
-- If using `npx`, ensure npx is in your IDE's PATH.
+- Ensure the binary directory is in your IDE's PATH.
 
 **Tools appear but routing is not enforced**
-- Hooks enforce routing programmatically. Without hooks, the model can still use context-mode tools but won't be redirected to prefer them.
-- Ensure the hook config file is in `.github/hooks/context-mode.json` (not `.github/hooks.json`).
+- Hooks enforce routing programmatically. Without hooks, the model can still use context-mode-rust tools but won't be redirected to prefer them.
+- Ensure the hook config file is in `.github/hooks/context-mode-rust.json` (not `.github/hooks.json`).
 
 **Session continuity not working**
 - Verify all four hooks (PreToolUse, PostToolUse, PreCompact, SessionStart) are configured.

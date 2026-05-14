@@ -52,8 +52,8 @@ Hooks are registered in `~/.codex/hooks.json`. The matcher uses pipe-separated t
 MCP server registration goes in `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.context-mode]
-command = "context-mode"
+[mcp_servers.context-mode-rust]
+command = "context-mode-server"
 ```
 
 ## Wire Protocol

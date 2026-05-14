@@ -44,8 +44,8 @@ Configured in `.vscode/mcp.json`:
 ```json
 {
   "servers": {
-    "context-mode": {
-      "command": "context-mode",
+    "context-mode-rust": {
+      "command": "context-mode-server",
       "args": []
     }
   }

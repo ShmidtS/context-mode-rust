@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "context-mode": {
+    "context-mode-rust": {
       "command": "context-mode-server"
     }
   }

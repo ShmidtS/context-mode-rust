@@ -1,10 +1,10 @@
 {
   "$schema": "https://app.kilo.ai/config.json",
   "mcp": {
-    "context-mode": {
+    "context-mode-rust": {
       "type": "local",
-      "command": ["context-mode"]
+      "command": ["context-mode-server"]
     }
   },
-  "plugin": ["context-mode"]
+  "plugin": ["context-mode-rust"]
 }

@@ -12,11 +12,11 @@
 **Claude Code** (marketplace):
 
 ```bash
-/plugin marketplace add ShmidtS/context-mode
+/plugin marketplace add ShmidtS/context-mode-rust
 ```
 
 ```bash
-/plugin install context-mode@context-mode
+/plugin install context-mode-rust@context-mode-rust
 ```
 
 **All platforms** (from source):
@@ -35,7 +35,7 @@ cargo install --path crates/server # optional: adds `context-mode-server` to PAT
 Then register the MCP server in your AI client. For **Claude Code**:
 
 ```bash
-/mcp add context-mode context-mode-server
+/mcp add context-mode-rust context-mode-server
 ```
 
 Or manually add to `~/.claude.json` (replace the path with the absolute path to the binary):
@@ -43,7 +43,7 @@ Or manually add to `~/.claude.json` (replace the path with the absolute path to 
 ```json
 {
   "mcpServers": {
-    "context-mode": {
+    "context-mode-rust": {
       "command": "context-mode-server"
     }
   }

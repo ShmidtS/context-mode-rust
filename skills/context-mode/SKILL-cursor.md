@@ -71,8 +71,8 @@ MCP registration in `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "context-mode": {
-      "command": "context-mode"
+    "context-mode-rust": {
+      "command": "context-mode-server"
     }
   }
 }

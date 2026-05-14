@@ -1,8 +1,8 @@
 {
   "servers": {
-    "context-mode": {
+    "context-mode-rust": {
       "command": "npx",
-      "args": ["-y", "context-mode"]
+      "args": ["-y", "context-mode-server"]
     }
   }
 }

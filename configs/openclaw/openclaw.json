@@ -2,12 +2,12 @@
   "$schema": "https://openclaw.ai/config.json",
   "plugins": {
     "entries": {
-      "context-mode": {
+      "context-mode-rust": {
         "enabled": true
       }
     },
     "slots": {
-      "contextEngine": "context-mode"
+      "contextEngine": "context-mode-rust"
     }
   }
 }

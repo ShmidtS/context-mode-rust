@@ -1,10 +1,10 @@
 # Platform Support Matrix
 
-This document provides a comprehensive comparison of all platforms supported by context-mode, including their hook paradigms, capabilities, configuration, and known limitations.
+This document provides a comprehensive comparison of all platforms supported by context-mode-rust, including their hook paradigms, capabilities, configuration, and known limitations.
 
 ## Overview
 
-context-mode supports twelve platforms across three hook paradigms:
+context-mode-rust supports twelve platforms across three hook paradigms:
 
 | Paradigm | Platforms |
 |----------|-----------|
@@ -50,9 +50,9 @@ This produces `context-mode` and `context-mode-server` binaries in `target/relea
 | **MCP tool naming** | `mcp__server__tool` | `mcp__server__tool` | `f1e_` prefix | `f1e_` prefix | `MCP:<tool>` in hook payloads | `mcp__server__tool` | `mcp__server__tool` | `mcp__server__tool` | `mcp__server__tool` |
 | **Hook command format** | `context-mode hook claude-code <event>` | `context-mode hook gemini-cli <event>` | `context-mode hook vscode-copilot <event>` | `context-mode hook jetbrains-copilot <event>` | `context-mode hook cursor <event>` | TS plugin (no command) | `context-mode hook codex <event>` | N/A | N/A |
 | **Hook registration** | settings.json hooks object | settings.json hooks object | `.github/hooks/*.json` | `.github/hooks/*.json` | `hooks.json` native hook arrays | opencode.json plugin array | `~/.codex/hooks.json` | N/A | N/A |
-| **MCP server command** | `context-mode` (or plugin auto) | `context-mode` | `context-mode` | `context-mode` | `context-mode` | `context-mode` | `context-mode` | `context-mode` | `context-mode` |
+| **MCP server command** | `context-mode-server` (or plugin auto) |
 | **Plugin distribution** | Claude plugin registry | cargo install | cargo install | cargo install | cargo install | cargo install | cargo install | cargo install | cargo install |
-| **Session dir** | `~/.claude/context-mode/sessions/` | `~/.gemini/context-mode/sessions/` | `.github/context-mode/sessions/` or `~/.vscode/context-mode/sessions/` | `.github/context-mode/sessions/` | `~/.cursor/context-mode/sessions/` | `~/.config/opencode/context-mode/sessions/` | `~/.codex/context-mode/sessions/` | `~/.gemini/context-mode/sessions/` | `~/.kiro/context-mode/sessions/` |
+| **Session dir** | `~/.claude/context-mode-rust/sessions/` | `~/.gemini/context-mode-rust/sessions/` | `.github/context-mode-rust/sessions/` or `~/.vscode/context-mode-rust/sessions/` | `.github/context-mode-rust/sessions/` | `~/.cursor/context-mode-rust/sessions/` | `~/.config/opencode/context-mode-rust/sessions/` | `~/.codex/context-mode-rust/sessions/` | `~/.gemini/context-mode-rust/sessions/` | `~/.kiro/context-mode-rust/sessions/` |
 
 ### Legend
 
@@ -70,7 +70,7 @@ This produces `context-mode` and `context-mode-server` binaries in `target/relea
 
 **Hook Paradigm:** JSON stdin/stdout
 
-Claude Code is the primary platform for context-mode. All hooks communicate via JSON on stdin/stdout. The adapter reads raw JSON input, normalizes it into platform-agnostic events, and formats responses back into Claude Code's expected output format.
+Claude Code is the primary platform for context-mode-rust. All hooks communicate via JSON on stdin/stdout. The adapter reads raw JSON input, normalizes it into platform-agnostic events, and formats responses back into Claude Code's expected output format.
 
 **Hook Names:**
 - `PreToolUse` -- fires before a tool is executed
@@ -172,7 +172,7 @@ OpenCode uses a TypeScript plugin paradigm instead of JSON stdin/stdout. Hooks a
 - Plugin registered in the `plugin` array with npm package names
 
 **Cross-session resume:**
-When OpenCode triggers `experimental.session.compacting` (auto on context overflow OR manual `/compact`), context-mode saves a snapshot to its per-project SQLite store. The NEXT new session in the same project — typically after `Ctrl+D` then re-running `opencode`, or starting a fresh chat — claims that snapshot via `experimental.chat.system.transform` and prepends it to `system[1]` (preserves OpenCode's `[header, body]` cache fold). The current session never claims its OWN snapshot back (self-injection guard, v1.0.106). To verify the injection landed, run with `OPENCODE_DEBUG=1` and grep for `<!-- context-mode v` in the system prompt — that's the visible marker.
+When OpenCode triggers `experimental.session.compacting` (auto on context overflow OR manual `/compact`), context-mode-rust saves a snapshot to its per-project SQLite store. The NEXT new session in the same project — typically after `Ctrl+D` then re-running `opencode`, or starting a fresh chat — claims that snapshot via `experimental.chat.system.transform` and prepends it to `system[1]` (preserves OpenCode's `[header, body]` cache fold). The current session never claims its OWN snapshot back (self-injection guard, v1.0.106). To verify the injection landed, run with `OPENCODE_DEBUG=1` and grep for `<!-- context-mode-rust v` in the system prompt — that's the visible marker.
 
 **Known Issues / Caveats:**
 - SessionStart is broken (issue #14808, no hook issue #5409) — we use `experimental.chat.system.transform` as a surrogate
@@ -233,7 +233,7 @@ context-mode hook codex stop
 
 Qwen Code (by Alibaba/Qwen team) uses the exact same hook wire protocol as Claude Code, verified from source (`hookRunner.ts`, `claude-converter.ts`). Hooks are configured inside `~/.qwen/settings.json` under the `hooks` key.
 
-**Hook Names:** `PreToolUse`, `PostToolUse`, `SessionStart`, `PreCompact`, `UserPromptSubmit` (Qwen supports 12 events total, context-mode uses these 5)
+**Hook Names:** `PreToolUse`, `PostToolUse`, `SessionStart`, `PreCompact`, `UserPromptSubmit` (Qwen supports 12 events total, context-mode-rust uses these 5)
 
 **Blocking:** `permissionDecision: "deny"` or exit code 2
 **Arg Modification:** `updatedInput` in response
@@ -243,7 +243,7 @@ Qwen Code (by Alibaba/Qwen team) uses the exact same hook wire protocol as Claud
 **Configuration:**
 - Settings + hooks: `~/.qwen/settings.json`
 - MCP: `mcpServers` in settings.json
-- Sessions: `~/.qwen/context-mode/sessions/`
+- Sessions: `~/.qwen/context-mode-rust/sessions/`
 
 **Detection:** MCP clientInfo (`qwen-cli-mcp-client-*` pattern), `QWEN_PROJECT_DIR` env var, or `~/.qwen/` config dir.
 
@@ -305,7 +305,7 @@ Google Antigravity is an AI-powered IDE by Google/DeepMind. It shares the `~/.ge
 
 **Hook Paradigm:** MCP-only
 
-Kiro is an AWS agentic IDE and CLI. It supports MCP servers via `~/.kiro/settings/mcp.json` using the standard `mcpServers` JSON format. Hook support for Kiro CLI (JSON stdin + exit code 2 blocking, `preToolUse`/`postToolUse`) is verified in the Kiro CLI docs but not yet implemented in context-mode — planned for Phase 2.
+Kiro is an AWS agentic IDE and CLI. It supports MCP servers via `~/.kiro/settings/mcp.json` using the standard `mcpServers` JSON format. Hook support for Kiro CLI (JSON stdin + exit code 2 blocking, `preToolUse`/`postToolUse`) is verified in the Kiro CLI docs but not yet implemented in context-mode-rust — planned for Phase 2.
 
 **Detection:**
 - Auto-detected via MCP protocol handshake (`clientInfo.name: "Kiro CLI"`)
@@ -320,7 +320,7 @@ Kiro is an AWS agentic IDE and CLI. It supports MCP servers via `~/.kiro/setting
 **Hook System (Phase 2 — not yet implemented):**
 - Kiro CLI supports `preToolUse`/`postToolUse` hooks via JSON stdin
 - Blocking: exit code 2 (similar to Gemini CLI pattern)
-- Hook format verified in Kiro CLI docs but context-mode adapter is not yet built
+- Hook format verified in Kiro CLI docs but context-mode-rust adapter is not yet built
 
 **Built-in Tools:**
 - `fs_read` / `read`, `fs_write` / `write`, `execute_bash` / `shell`, `use_aws` / `aws`
@@ -466,7 +466,7 @@ context-mode hook jetbrains-copilot sessionstart
 
 **Hook Paradigm:** JSON stdin/stdout
 
-Cursor uses native lower-camel hook names and flat hook entries in `.cursor/hooks.json` or `~/.cursor/hooks.json`. context-mode treats Cursor as a first-class adapter and does not rely on Claude-compat wrappers for official support.
+Cursor uses native lower-camel hook names and flat hook entries in `.cursor/hooks.json` or `~/.cursor/hooks.json`. context-mode-rust treats Cursor as a first-class adapter and does not rely on Claude-compat wrappers for official support.
 
 **Hook Names:**
 - `preToolUse` -- fires before a tool is executed
@@ -521,7 +521,7 @@ context-mode hook cursor stop
 
 **Hook Paradigm:** TS Plugin (gateway plugin via `api.registerHook()` / `api.on()`)
 
-OpenClaw is an OpenAI-stack agent gateway. context-mode ships as a native gateway plugin that registers hooks through OpenClaw's plugin API rather than the JSON stdin/stdout wire protocol. The same plugin entry also registers context-mode as a context engine, owning compaction.
+OpenClaw is an OpenAI-stack agent gateway. context-mode-rust ships as a native gateway plugin that registers hooks through OpenClaw's plugin API rather than the JSON stdin/stdout wire protocol. The same plugin entry also registers context-mode-rust as a context engine, owning compaction.
 
 **Hook Names:**
 - `tool_call:before` -- equivalent to PreToolUse
@@ -540,17 +540,17 @@ OpenClaw is an OpenAI-stack agent gateway. context-mode ships as a native gatewa
 
 **Path Resolution:**
 - Detection root: `~/.openclaw/`
-- Plugin install: `~/.openclaw/extensions/context-mode/`
+- Plugin install: `~/.openclaw/extensions/context-mode-rust/`
 - Project config: `openclaw.json` or `.openclaw/openclaw.json`
 - Global config fallback: `~/.openclaw/openclaw.json`
 - Project dir: `process.cwd()` (the gateway provides no dedicated env var)
 - Memory dir: project-relative `./memory`
-- Session dir: `~/.openclaw/context-mode/sessions/`
+- Session dir: `~/.openclaw/context-mode-rust/sessions/`
 - Routing instructions: `AGENTS.md`
 
 **Configuration:**
-- `openclaw.json` registers context-mode under `plugins.entries["context-mode"]` (`{ "enabled": true }`)
-- `plugins.slots.contextEngine = "context-mode"` enables ownership of compaction
+- `openclaw.json` registers context-mode-rust under `plugins.entries["context-mode-rust"]` (`{ "enabled": true }`)
+- `plugins.slots.contextEngine = "context-mode-rust"` enables ownership of compaction
 - No CLI hook command; OpenClaw imports the plugin module directly
 
 **Notes / Caveats:**
@@ -567,7 +567,7 @@ OpenClaw is an OpenAI-stack agent gateway. context-mode ships as a native gatewa
 
 **Hook Paradigm:** MCP-only
 
-Zed is a code editor with first-class MCP support but no hook pipeline. context-mode runs purely through Zed's `context_servers` configuration; routing enforcement falls back to the AGENTS.md instruction file (~60% compliance).
+Zed is a code editor with first-class MCP support but no hook pipeline. context-mode-rust runs purely through Zed's `context_servers` configuration; routing enforcement falls back to the AGENTS.md instruction file (~60% compliance).
 
 **Hook Support:**
 - PreToolUse: --
@@ -585,7 +585,7 @@ The hook adapter exists only to satisfy the interface contract — every parser 
 - Detection root: `~/.config/zed/`
 - Settings file: `~/.config/zed/settings.json`
 - MCP registration: `context_servers` object inside `settings.json`
-- Session dir: `~/.config/zed/context-mode/sessions/`
+- Session dir: `~/.config/zed/context-mode-rust/sessions/`
 - Routing instructions: `AGENTS.md` (sourced from `configs/zed/AGENTS.md` in the package, with an inline fallback if missing)
 
 **Detection:**
@@ -671,9 +671,9 @@ context-mode hook <platform> <event>
 
 The dispatcher resolves the hook script relative to the installed package and dynamically imports it. Stdin/stdout flow through naturally since it runs in the same process.
 
-**Advantages over `node ./node_modules/...` paths:**
-- Works from any directory (no per-project `npm install` needed)
-- Single global install serves all projects
+**Advantages over per-project binary paths:**
+- Works from any directory (no per-project build needed)
+- Single global install via `cargo install` serves all projects
 - `context-mode upgrade` updates hooks in-place
 - Short, portable command strings in settings files
 
