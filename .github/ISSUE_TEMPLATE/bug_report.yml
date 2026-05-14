@@ -80,7 +80,7 @@ body:
         bash scripts/ctx-debug.sh
         cat /tmp/ctx-debug-*.json   # paste this
         ```
-        If installed via npm: `bash "$(npm root -g)/context-mode/scripts/ctx-debug.sh"`
+        If installed from source: run `cargo build --workspace --release` first.
         The script writes a JSON file to /tmp — copy its contents here.
         **Issues without debug output will be closed immediately.**
       placeholder: "Paste the contents of /tmp/ctx-debug-<timestamp>.json"
@@ -137,8 +137,8 @@ body:
         Remember: your AI agent can read our source code. Ask it to help.
       placeholder: |
         - Upgraded to latest version
-        - Read hooks/pretooluse.mjs, found that...
-        - Tried running the hook manually: node hooks/pretooluse.mjs <<< '...'
+        - Read the relevant Rust hook adapter, found that...
+        - Tried running the hook manually: context-mode hook claude-code pretooluse <<< '...'
     validations:
       required: true
 
@@ -176,8 +176,8 @@ body:
   - type: input
     id: runtime
     attributes:
-      label: JS Runtime
-      description: "Bun or Node version (shown in debug script output)"
-      placeholder: "e.g. bun 1.3.4"
+      label: Rust version
+      description: "Rust version (shown in debug script output)"
+      placeholder: "e.g. rustc 1.85.0"
     validations:
       required: false

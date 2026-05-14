@@ -1,8 +1,3 @@
 {
-  "css.lint.unknownAtRules": "ignore",
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true,
-  "files.associations": {
-    "bun.lock": "text"
-  }
+  "css.lint.unknownAtRules": "ignore"
 }

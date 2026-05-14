@@ -80,7 +80,7 @@ Enforces your existing permission rules in the sandbox. Block `sudo` -> also blo
 {
   "permissions": {
     "deny": ["Bash(sudo *)", "Bash(rm -rf /*)", "Read(.env)", "Read(*/.env*)"],
-    "allow": ["Bash(git:*)", "Bash(npm:*)"]
+    "allow": ["Bash(git:*)", "Bash(cargo:*)"]
   }
 }
 ```

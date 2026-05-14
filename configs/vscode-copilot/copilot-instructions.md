@@ -4,16 +4,16 @@ context-mode MCP tools available. Rules protect context window from flooding. On
 
 ## Think in Code — MANDATORY
 
-Analyze/count/filter/compare/search/parse/transform data: **write code** via `ctx_execute(language, code)`, `console.log()` only the answer. Do NOT read raw data into context. PROGRAM the analysis, not COMPUTE it. Pure JavaScript — Node.js built-ins only (`fs`, `path`, `child_process`). `try/catch`, handle `null`/`undefined`. One script replaces ten tool calls.
+Analyze/count/filter/compare/search/parse/transform data: **write code** via `ctx_execute(language, code)`, `console.log()` only the answer. Do NOT read raw data into context. PROGRAM the analysis, not COMPUTE it. Use the smallest sandbox language that fits. Handle errors and empty values explicitly. One script replaces ten tool calls.
 
 ## BLOCKED — do NOT attempt
 
 ### curl / wget — BLOCKED
 Terminal `curl`/`wget` intercepted and blocked. Do NOT retry.
-Use: `ctx_fetch_and_index(url, source)` or `ctx_execute(language: "javascript", code: "const r = await fetch(...)")`
+Use: `ctx_fetch_and_index(url, source)` or `ctx_execute(language: "python", code: "...")`
 
 ### Inline HTTP — BLOCKED
-`fetch('http`, `requests.get(`, `requests.post(`, `http.get(`, `http.request(` — intercepted. Do NOT retry.
+Inline HTTP calls (`fetch`, `requests.get`, `requests.post`, `http.get`, `http.request`) — intercepted. Do NOT retry.
 Use: `ctx_execute(language, code)` — only stdout enters context
 
 ### WebFetch / fetch — BLOCKED

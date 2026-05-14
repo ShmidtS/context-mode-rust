@@ -29,14 +29,14 @@
 
 | Scenario | Source | Raw Size | Context | Savings |
 |----------|--------|----------|---------|---------|
-| React useEffect docs | Context7 | 5.9 KB | 261 B | 96% |
+| Rust std docs | Context7 | 5.9 KB | 261 B | 96% |
 | Next.js App Router docs | Context7 | 6.5 KB | 249 B | 96% |
 | Tailwind CSS docs | Context7 | 4.0 KB | 186 B | 95% |
 | Page snapshot (Hacker News) | Playwright | 56.2 KB | 299 B | 99% |
 | PR list (vercel/next.js) | GitHub | 6.4 KB | 719 B | 89% |
-| Issues (facebook/react) | GitHub | 58.9 KB | 1,139 B | 98% |
-| Test output (30 suites) | vitest | 6.0 KB | 337 B | 95% |
-| TypeScript errors (50) | tsc | 4.9 KB | 347 B | 93% |
+| Issues (rust-lang/rust) | GitHub | 58.9 KB | 1,139 B | 98% |
+| Test output (30 suites) | cargo test | 6.0 KB | 337 B | 95% |
+| Rust compiler errors (50) | rustc | 4.9 KB | 347 B | 93% |
 | Build output (100+ lines) | next build | 6.4 KB | 405 B | 94% |
 | MCP tools (40 tools) | MCP tools/list | 17.0 KB | 742 B | 96% |
 | Access log (500 requests) | nginx | 45.1 KB | 155 B | 100% |
@@ -50,7 +50,7 @@
 | Scenario | Source | Raw Size | Search Result (3 queries) | Savings | Code Blocks |
 |----------|--------|----------|---------------------------|---------|-------------|
 | Supabase Edge Functions | Context7 | 3.9 KB | 2,246 B | 44% | 4 |
-| React useEffect docs | Context7 | 5.9 KB | 1,494 B | 75% | 4 |
+| Rust std docs | Context7 | 5.9 KB | 1,494 B | 75% | 4 |
 | Next.js App Router docs | Context7 | 6.5 KB | 3,311 B | 50% | 5 |
 | Tailwind CSS docs | Context7 | 4.0 KB | 620 B | 85% | 5 |
 | Skill prompt (main) | context-mode | 4.4 KB | 932 B | 79% | 6 |

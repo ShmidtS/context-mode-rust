@@ -9,7 +9,7 @@ Raw tool output floods context window. Use context-mode MCP tools to keep raw da
 
 ## Think in Code — MANDATORY
 
-Analyze/count/filter/compare/search/parse/transform data: **write code** via `ctx_execute(language, code)`, `console.log()` only the answer. Do NOT read raw data into context. PROGRAM the analysis, not COMPUTE it. Pure JavaScript — Node.js built-ins only (`fs`, `path`, `child_process`). `try/catch`, handle `null`/`undefined`. One script replaces ten tool calls.
+Analyze/count/filter/compare/search/parse/transform data: **write code** via `ctx_execute(language, code)`, `console.log()` only the answer. Do NOT read raw data into context. PROGRAM the analysis, not COMPUTE it. Use the smallest sandbox language that fits. Handle errors and empty values explicitly. One script replaces ten tool calls.
 
 ## Tool Selection
 

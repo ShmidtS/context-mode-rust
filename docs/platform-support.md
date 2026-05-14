@@ -9,7 +9,7 @@ context-mode-rust supports twelve platforms across three hook paradigms:
 | Paradigm | Platforms |
 |----------|-----------|
 | **JSON stdin/stdout** | Claude Code, Gemini CLI, VS Code Copilot, JetBrains Copilot, Cursor, Codex CLI, Qwen Code |
-| **TS Plugin** | OpenCode, OpenClaw |
+| **native plugin** | OpenCode, OpenClaw |
 | **MCP-only** | Antigravity, Kiro, Zed |
 
 The MCP server layer is 100% portable and needs no adapter. Only the hook layer requires platform-specific adapters.
@@ -147,9 +147,9 @@ context-mode hook gemini-cli sessionstart
 
 **Status:** Partially supported
 
-**Hook Paradigm:** TS Plugin
+**Hook Paradigm:** native plugin
 
-OpenCode uses a TypeScript plugin paradigm instead of JSON stdin/stdout. Hooks are registered via the `plugin` array in `opencode.json`.
+OpenCode uses a native plugin paradigm instead of JSON stdin/stdout. Hooks are registered via the `plugin` array in `opencode.json`.
 
 **Hook Names:**
 - `tool.execute.before` -- equivalent to PreToolUse
@@ -169,7 +169,7 @@ OpenCode uses a TypeScript plugin paradigm instead of JSON stdin/stdout. Hooks a
 
 **Configuration:**
 - `opencode.json` or `.opencode/opencode.json`
-- Plugin registered in the `plugin` array with npm package names
+- Plugin registered in the `plugin` array with Rust-installed context-mode assets
 
 **Cross-session resume:**
 When OpenCode triggers `experimental.session.compacting` (auto on context overflow OR manual `/compact`), context-mode-rust saves a snapshot to its per-project SQLite store. The NEXT new session in the same project — typically after `Ctrl+D` then re-running `opencode`, or starting a fresh chat — claims that snapshot via `experimental.chat.system.transform` and prepends it to `system[1]` (preserves OpenCode's `[header, body]` cache fold). The current session never claims its OWN snapshot back (self-injection guard, v1.0.106). To verify the injection landed, run with `OPENCODE_DEBUG=1` and grep for `<!-- context-mode-rust v` in the system prompt — that's the visible marker.
@@ -519,7 +519,7 @@ context-mode hook cursor stop
 
 **Status:** Fully supported
 
-**Hook Paradigm:** TS Plugin (gateway plugin via `api.registerHook()` / `api.on()`)
+**Hook Paradigm:** native plugin (gateway plugin via `api.registerHook()` / `api.on()`)
 
 OpenClaw is an OpenAI-stack agent gateway. context-mode-rust ships as a native gateway plugin that registers hooks through OpenClaw's plugin API rather than the JSON stdin/stdout wire protocol. The same plugin entry also registers context-mode-rust as a context engine, owning compaction.
 
@@ -663,7 +663,7 @@ The hook adapter exists only to satisfy the interface contract — every parser 
 
 ## CLI Hook Dispatcher
 
-All hook-based platforms use the CLI dispatcher pattern instead of direct `node` paths:
+All hook-based platforms use the CLI dispatcher pattern instead of direct script paths:
 
 ```
 context-mode hook <platform> <event>

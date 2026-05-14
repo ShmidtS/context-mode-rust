@@ -9,8 +9,8 @@
     "allow": [
       "Bash(git:*)",
       "Bash(ls:*)",
-      "Bash(npm:*)",
-      "Bash(npx:*)",
+      "Bash(cargo:*)",
+      "Bash(context-mode:*)",
       "Bash(cat:*)",
       "Bash(echo:*)"
     ]

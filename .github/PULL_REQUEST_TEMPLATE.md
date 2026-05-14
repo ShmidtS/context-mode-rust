@@ -29,8 +29,9 @@
 ## Checklist
 
 - [ ] Tests added/updated (TDD: red → green)
-- [ ] `npm test` passes
-- [ ] `npm run typecheck` passes
+- [ ] `cargo test --workspace` passes
+- [ ] `cargo clippy --workspace -- -D warnings` passes
+- [ ] `cargo fmt -- --check` passes
 - [ ] Docs updated if needed (README, platform-support.md)
 - [ ] No Windows path regressions (forward slashes only)
 - [ ] Targets `next` branch (unless hotfix)

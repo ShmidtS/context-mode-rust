@@ -5,7 +5,7 @@ Licensed under Elastic License 2.0.
 ## Prerequisites
 
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)
-- Node.js 20+ or [Bun](https://bun.sh/)
+- Rust 1.85+
 
 ## Local Development Setup
 
@@ -37,7 +37,7 @@ Override PreToolUse in `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "node /path/to/your/clone/context-mode/hooks/pretooluse.mjs"
+            "command": "context-mode hook claude-code pretooluse"
           }
         ]
       }
@@ -46,24 +46,25 @@ Override PreToolUse in `~/.claude/settings.json`:
 }
 ```
 
-> Do NOT add PostToolUse, PreCompact, SessionStart, or UserPromptSubmit to `settings.json` — they are already registered in `hooks.json` via the symlink. Adding them to both causes double invocations and SQLite locking errors.
+> Do NOT add PostToolUse, PreCompact, SessionStart, or UserPromptSubmit to `settings.json` — they are already registered by the plugin. Adding them twice causes double invocations and SQLite locking errors.
 
-Bump version in `package.json`, `src/server.ts`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, then `npm run build`. Run `/context-mode:ctx-doctor` to verify.
+Bump version in `Cargo.toml`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, then run `cargo build --workspace --release`. Run `/context-mode:ctx-doctor` to verify.
 
 ## Development Workflow
 
 | Command | Purpose |
 |---------|---------|
-| `npm run build` | TypeScript + esbuild |
-| `npm test` | Vitest run (parallel) |
-| `npm run typecheck` | Type checking only |
-| `npm run test:watch` | Watch mode |
+| `cargo build --workspace` | Build all crates |
+| `cargo build --workspace --release` | Build optimized binaries |
+| `cargo test --workspace` | Run all tests |
+| `cargo clippy --workspace -- -D warnings` | Lint |
+| `cargo fmt -- --check` | Format check |
 
 | Changed | Rebuild? |
 |---------|----------|
-| `hooks/*.mjs` | No |
-| `src/*.ts` | Yes |
+| `crates/*` | Yes |
 | `configs/*` | No |
+| `docs/*` | No |
 
 ## TDD Workflow
 
@@ -73,16 +74,16 @@ Red -> Green -> Refactor.
 2. Write the minimum code to make it pass.
 3. Refactor while keeping tests green.
 
-| Domain | Test File |
-|--------|-----------|
-| Adapters | `tests/adapters/<platform>.test.ts` |
-| Search & FTS5 | `tests/core/search.test.ts` |
-| Server & tools | `tests/core/server.test.ts` |
-| CLI & bundle | `tests/core/cli.test.ts` |
-| Session DB/extract/snapshot | `tests/session/session-*.test.ts` |
-| Executor | `tests/executor.test.ts` |
-| Store | `tests/store.test.ts` |
-| Security | `tests/security.test.ts` |
+| Domain | Test Location |
+|--------|---------------|
+| Adapters | `crates/*/src/*` unit tests |
+| Search & FTS5 | `crates/*/src/*` unit tests |
+| Server & tools | `crates/server/src/*` unit tests |
+| CLI | `crates/cli/src/*` unit tests |
+| Session DB/extract/snapshot | `crates/*/src/*` unit tests |
+| Executor | `crates/*/src/*` unit tests |
+| Store | `crates/*/src/*` unit tests |
+| Security | `crates/*/src/*` unit tests |
 
 If your change doesn't fit an existing file, discuss with the maintainer first.
 
@@ -91,6 +92,6 @@ If your change doesn't fit an existing file, discuss with the maintainer first.
 1. Fork and create a feature branch from `next`
 2. Follow the local development setup above
 3. Write tests first (TDD)
-4. Run `npm test` and `npm run typecheck`
+4. Run `cargo test --workspace` and `cargo clippy --workspace -- -D warnings`
 5. Test in a live Claude Code session
 6. Open a PR using the template

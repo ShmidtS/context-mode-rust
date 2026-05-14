@@ -203,8 +203,3 @@ pub trait HookAdapter: Send + Sync {
     fn hook_paths(&self, plugin_root: &str) -> Vec<PathBuf>;
     fn platform_id(&self) -> PlatformId;
 }
-
-pub fn build_node_command(script_path: impl AsRef<str>) -> String {
-    let safe_path = script_path.as_ref().replace('\\', "/");
-    format!("\"node\" \"{safe_path}\"")
-}

@@ -73,16 +73,15 @@ fn hook_command_builder_prefers_plugin_script_path() {
 
     let command = builder("PreToolUse", Some("C:\\plugins\\context-mode")).unwrap();
 
-    assert!(command.contains("node"));
-    assert!(command.contains("C:/plugins/context-mode/hooks/pre-tool-use.js"));
+    assert!(command.contains("context-mode hook"));
+    assert!(command.contains("claude-code pretooluse"));
 }
 
 #[test]
-fn context_mode_hook_checker_matches_script_or_dispatcher() {
-    let checker = create_is_context_mode_hook(
-        HashMap::from([("PreToolUse".to_string(), "pre-tool-use.js".to_string())]),
-        |hook_type| format!("context-mode hook claude-code {}", hook_type.to_lowercase()),
-    );
+fn context_mode_hook_checker_matches_dispatcher_command() {
+    let checker = create_is_context_mode_hook(HashMap::new(), |hook_type| {
+        format!("context-mode hook claude-code {}", hook_type.to_lowercase())
+    });
     let entry = HookEntry {
         matcher: String::new(),
         hooks: vec![HookCommand {

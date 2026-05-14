@@ -18,26 +18,24 @@ The context-mode adapter hooks into Pi Agent sessions specifically, intercepting
 ### Quick install
 
 ```bash
-npm run install:openclaw
+cargo build --workspace --release
+cargo install --path crates/cli
+cargo install --path crates/server
 ```
 
-This runs `scripts/install-openclaw-plugin.sh`, which handles building, extension setup, runtime registration, and gateway restart.
+This builds the `context-mode` and `context-mode-server` binaries used by OpenClaw.
 
 ### Prerequisites
 
-- **Node.js** must be in PATH (required for the build and registration steps)
-- **OpenClaw must have been started once** — the script needs `openclaw.json`, which OpenClaw creates on first launch
-- **`OPENCLAW_STATE_DIR`** must point to your OpenClaw state directory (default: `/openclaw`). Pass it as an argument: `npm run install:openclaw -- /path/to/state`
+- **Rust 1.85+** must be installed
+- **OpenClaw must have been started once** — the setup needs `openclaw.json`, which OpenClaw creates on first launch
+- **`OPENCLAW_STATE_DIR`** must point to your OpenClaw state directory (default: `/openclaw`)
 
 ### Manual install
 
-For advanced users or custom setups:
+For advanced users or custom setups, build from source and configure OpenClaw to launch `context-mode-server` as its MCP server.
 
-```bash
-bash scripts/install-openclaw-plugin.sh [OPENCLAW_STATE_DIR]
-```
-
-See [`scripts/install-openclaw-plugin.sh`](../../scripts/install-openclaw-plugin.sh) for details.
+See [`docs/platform-support.md`](../platform-support.md) for the shared binary setup.
 
 ### Troubleshooting
 
@@ -45,17 +43,17 @@ See [`scripts/install-openclaw-plugin.sh`](../../scripts/install-openclaw-plugin
 OpenClaw creates this file on first launch. Start OpenClaw once (`openclaw gateway start`), then re-run the install script. This is the most common issue for users who install context-mode before ever starting OpenClaw.
 
 **"OPENCLAW_STATE_DIR (/path) does not exist. Is OpenClaw installed?"**
-The state directory doesn't exist at the expected path. If you installed OpenClaw via npm (not git clone), check where it stores state — common locations are `~/.openclaw` or `/openclaw`. Pass the correct path: `npm run install:openclaw -- /path/to/state`.
+The state directory doesn't exist at the expected path. Check where OpenClaw stores state — common locations are `~/.openclaw` or `/openclaw`. Set `OPENCLAW_STATE_DIR` to the correct path before configuring the MCP server.
 
 **Plugin installed but not loading**
 Clear the jiti cache (`rm -f /tmp/jiti/context-mode-*.cjs`) and restart the gateway. If the issue persists, verify the plugin appears in `openclaw plugins list`.
 
 **Plugin loads but `ctx_*` tools are missing from the agent's tool list**
-The plugin registers its hooks via `api.on(...)` / `api.registerCommand(...)`, but the agent-callable `ctx_*` tools live in the MCP server (`server.bundle.mjs`). OpenClaw surfaces them by spawning the server as an MCP sidecar declared in `mcp.servers.context-mode`. The install script writes this entry automatically (step 5); if you configured OpenClaw manually, verify with `openclaw mcp list` and add it if missing:
+The plugin registers its hooks via `api.on(...)` / `api.registerCommand(...)`, but the agent-callable `ctx_*` tools live in the Rust MCP server. OpenClaw surfaces them by spawning the server as an MCP sidecar declared in `mcp.servers.context-mode`. If you configured OpenClaw manually, verify with `openclaw mcp list` and add it if missing:
 
 ```bash
 openclaw mcp set context-mode \
-  "{\"command\":\"node\",\"args\":[\"/absolute/path/to/context-mode/server.bundle.mjs\"]}"
+  "{\"command\":\"context-mode-server\",\"args\":[]}"
 openclaw gateway restart
 ```
 
@@ -69,20 +67,6 @@ The adapter uses two different registration APIs, matching OpenClaw's internal a
 - **`api.registerHook()`** for command hooks: `command:new`, `command:reset`, `command:stop`. These use colon-delimited names and the generic hook registration system.
 
 Using the wrong API (e.g., `api.registerHook("before_tool_call", ...)`) registers silently but the hook never fires. This distinction is critical.
-
-### Synchronous `register()`
-
-OpenClaw silently discards the return value of `register()`. If `register()` is async, all hooks registered inside it are lost. The adapter uses the initPromise pattern:
-
-```typescript
-register(api): void {
-  const initPromise = (async () => { /* async setup */ })();
-  api.on("after_tool_call", async (e) => {
-    await initPromise;
-    // handle event
-  });
-}
-```
 
 ## Session Continuity
 
@@ -118,13 +102,12 @@ This is the first release that includes the `api.on()` fix from [PR #9761](https
 
 ## Workspace Routing
 
-The adapter includes a workspace router (`src/openclaw/workspace-router.ts`) that resolves project paths from Pi Agent session metadata, ensuring session databases and routing instructions are scoped per-workspace.
+The adapter resolves project paths from Pi Agent session metadata, ensuring session databases and routing instructions are scoped per-workspace.
 
 ## Key Files
 
 | File | Purpose |
 |---|---|
-| `src/openclaw-plugin.ts` | Main plugin entry (sync register, initPromise pattern) |
-| `src/openclaw/workspace-router.ts` | Workspace path resolution for session scoping |
-| `.openclaw-plugin/` | Plugin manifest (index.ts, openclaw.plugin.json, package.json) |
-| `scripts/install-openclaw-plugin.sh` | One-shot installer |
+| `crates/cli/` | CLI dispatcher and setup commands |
+| `crates/server/` | MCP server implementation |
+| `configs/openclaw/AGENTS.md` | OpenClaw routing instructions |

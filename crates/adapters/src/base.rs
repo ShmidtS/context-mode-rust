@@ -6,12 +6,12 @@ use sha2::{Digest, Sha256};
 use crate::types::{AdapterError, DiagnosticResult, HookAdapter};
 
 pub trait BaseAdapter: HookAdapter {
-    fn session_dir_segments(&self) -> &[&str];
+    fn session_dir_segments(&self) -> Vec<String>;
 
     fn session_dir(&self) -> Result<PathBuf, AdapterError> {
         let mut dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
         for segment in self.session_dir_segments() {
-            dir.push(segment);
+            dir.push(&segment);
         }
         dir.push("context-mode");
         dir.push("sessions");
@@ -34,7 +34,7 @@ pub trait BaseAdapter: HookAdapter {
     fn config_dir(&self, _project_dir: Option<&Path>) -> PathBuf {
         let mut dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
         for segment in self.session_dir_segments() {
-            dir.push(segment);
+            dir.push(&segment);
         }
         dir
     }
