@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || resolve(new URL('.', import.meta.url).pathname);
+const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || fileURLToPath(new URL('.', import.meta.url));
 const isWindows = process.platform === 'win32';
 const EXT = isWindows ? '.exe' : '';
 
