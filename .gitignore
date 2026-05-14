@@ -30,3 +30,9 @@ context-mode-guidance-*/
 meta.json
 bench-analytics.ts
 test-analytics.mjs
+/.claude-plugin/bin/*.exe
+
+# cargo install artifacts
+/.claude-plugin/.crates.toml
+/.claude-plugin/.crates2.json
+/.claude-plugin/bin/*.exe

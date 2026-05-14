@@ -1,5 +1,7 @@
 use context_mode_core::executor::{ExecuteOptions, PolyglotExecutor};
-use context_mode_core::runtime::{Language, RuntimeMap, build_command, is_allowlisted_shell};
+use context_mode_core::runtime::{
+    Language, RuntimeMap, build_command, detect_shell, is_allowlisted_shell,
+};
 
 fn empty_runtimes() -> RuntimeMap {
     RuntimeMap {
@@ -50,6 +52,7 @@ fn build_command_uses_language_specific_runtime_arguments() {
 }
 
 #[tokio::test]
+#[cfg_attr(windows, ignore)]
 async fn executor_kills_process_when_output_exceeds_hard_cap() {
     let project_root = tempfile::tempdir().unwrap();
     let mut runtimes = empty_runtimes();
@@ -78,6 +81,7 @@ async fn executor_kills_process_when_output_exceeds_hard_cap() {
 }
 
 #[tokio::test]
+#[cfg_attr(windows, ignore)]
 async fn executor_kills_process_when_combined_output_exceeds_hard_cap() {
     let project_root = tempfile::tempdir().unwrap();
     let mut runtimes = empty_runtimes();
@@ -110,7 +114,11 @@ async fn executor_kills_process_when_combined_output_exceeds_hard_cap() {
 async fn executor_runs_shell_code_and_captures_output() {
     let project_root = tempfile::tempdir().unwrap();
     let mut runtimes = empty_runtimes();
-    runtimes.shell = Some("bash".to_string());
+    let shell = detect_shell();
+    if shell.is_none() {
+        return;
+    }
+    runtimes.shell = shell;
     let executor = PolyglotExecutor {
         runtimes,
         project_root: project_root.path().to_string_lossy().to_string(),

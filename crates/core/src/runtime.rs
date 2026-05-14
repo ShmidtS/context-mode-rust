@@ -75,7 +75,7 @@ pub fn build_command(runtimes: &RuntimeMap, language: Language, file_path: &str)
         Language::JavaScript => command_with_file(&runtimes.javascript, file_path),
         Language::TypeScript => command_with_file(&runtimes.typescript, file_path),
         Language::Python => command_with_file(&runtimes.python, file_path),
-        Language::Shell => command_with_file(&runtimes.shell, file_path),
+        Language::Shell => build_shell_command(&runtimes.shell, file_path),
         Language::Ruby => command_with_file(&runtimes.ruby, file_path),
         Language::Go => command_with_args(&runtimes.go, &["run", file_path]),
         Language::Rust => command_with_file(&runtimes.rust, file_path),
@@ -103,6 +103,29 @@ fn command_with_args(runtime: &Option<String>, args: &[&str]) -> Vec<String> {
             command
         })
         .unwrap_or_default()
+}
+
+fn build_shell_command(runtime: &Option<String>, file_path: &str) -> Vec<String> {
+    let Some(rt) = runtime else {
+        return Vec::new();
+    };
+    let name = Path::new(rt)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(rt);
+    let is_cmd = Regex::new(r"(?i)^cmd(\.exe)?$")
+        .expect("cmd regex should compile")
+        .is_match(name);
+    let is_pwsh = Regex::new(r"(?i)^(pwsh|powershell)(\.exe)?$")
+        .expect("pwsh regex should compile")
+        .is_match(name);
+    if is_cmd {
+        vec![rt.clone(), "/C".to_string(), file_path.to_string()]
+    } else if is_pwsh {
+        vec![rt.clone(), "-File".to_string(), file_path.to_string()]
+    } else {
+        vec![rt.clone(), file_path.to_string()]
+    }
 }
 
 fn detect_command(cmd: &str) -> Option<String> {
@@ -165,7 +188,7 @@ fn bun_fallback_paths() -> Vec<String> {
     candidates
 }
 
-fn detect_shell() -> Option<String> {
+pub fn detect_shell() -> Option<String> {
     if cfg!(windows) {
         detect_windows_bash()
             .or_else(|| detect_command("pwsh"))
