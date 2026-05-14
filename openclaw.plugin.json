@@ -8,8 +8,8 @@
     "name": "ShmidtS",
     "url": "https://github.com/ShmidtS"
   },
-  "homepage": "https://github.com/ShmidtS/context-mode#readme",
-  "repository": "https://github.com/ShmidtS/context-mode",
+  "homepage": "https://github.com/ShmidtS/context-mode-rust#readme",
+  "repository": "https://github.com/ShmidtS/context-mode-rust",
   "license": "Elastic-2.0",
   "keywords": [
     "context-mode",

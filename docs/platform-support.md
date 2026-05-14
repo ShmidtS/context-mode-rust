@@ -19,8 +19,8 @@ The MCP server layer is 100% portable and needs no adapter. Only the hook layer 
 All platforms (except Claude Code plugin install) require a local install from source:
 
 ```bash
-git clone https://github.com/ShmidtS/context-mode.git
-cd context-mode && cargo build --workspace --release
+git clone https://github.com/ShmidtS/context-mode-rust.git context-mode-rust
+cd context-mode-rust && cargo build --workspace --release
 ```
 
 This produces `context-mode` and `context-mode-server` binaries in `target/release/`. Add them to PATH (via `cargo install --path crates/cli` / `cargo install --path crates/server`), which is required for:

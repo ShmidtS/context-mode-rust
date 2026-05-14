@@ -10,8 +10,8 @@ Licensed under Elastic License 2.0.
 ## Local Development Setup
 
 ```bash
-git clone https://github.com/ShmidtS/context-mode.git
-cd context-mode
+git clone https://github.com/ShmidtS/context-mode-rust.git context-mode-rust
+cd context-mode-rust
 npm install
 npm run build
 ```

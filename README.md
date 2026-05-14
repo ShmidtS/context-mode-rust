@@ -24,8 +24,8 @@
 Requires Rust 1.85+.
 
 ```bash
-git clone https://github.com/ShmidtS/context-mode.git
-cd context-mode
+git clone https://github.com/ShmidtS/context-mode-rust.git
+cd context-mode-rust
 cargo build --workspace --release
 # binaries are in target/release/context-mode and target/release/context-mode-server
 cargo install --path crates/cli    # optional: adds `context-mode` to PATH
@@ -102,8 +102,8 @@ Not a cloud service. MCP protocol layer — raw data stays in sandboxed subproce
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and TDD guidelines.
 
 ```bash
-git clone https://github.com/ShmidtS/context-mode.git
-cd context-mode && cargo test --workspace
+git clone https://github.com/ShmidtS/context-mode-rust.git context-mode-rust
+cd context-mode-rust && cargo test --workspace
 ```
 
 ## License

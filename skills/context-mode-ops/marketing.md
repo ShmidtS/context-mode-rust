@@ -43,7 +43,7 @@ Every number MUST come from a real source. Do NOT invent metrics.
 | Total users / installs | `stats.json` fields `message`, `npm`, `marketplace` |
 | Current version | `package.json` field `version` |
 | Platform / adapter count | `src/adapters/detect.ts` / `tests/adapters/` |
-| GitHub stats | `gh api repos/ShmidtS/context-mode --jq '.stargazers_count,.forks_count'` |
+| GitHub stats | `gh api repos/ShmidtS/context-mode-rust --jq '.stargazers_count,.forks_count'` |
 | Open issues | `gh issue list --state open --json number --jq 'length'` |
 | Recent release | `gh release list --limit 1` |
 
