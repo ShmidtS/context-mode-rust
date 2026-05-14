@@ -1,6 +1,11 @@
 use anyhow::Result;
 use context_mode_search::VectorStore;
+use context_mode_store::{ContentStore, SearchMode, SearchResult, SourceMatchMode};
 use serde_json::{Value, json};
+use std::path::Path;
+
+const SEMANTIC_FALLBACK_NOTE: &str =
+    "Semantic search requires embedding backend. Falling back to keyword search...";
 
 fn text_response(text: impl Into<String>) -> Value {
     json!({
@@ -15,13 +20,26 @@ pub fn reset_context_stream() -> Result<()> {
 
 pub async fn ctx_semantic_search(params: Value) -> Result<Value> {
     let query = params.get("query").and_then(|v| v.as_str()).unwrap_or("");
-    let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(5);
-    let store = VectorStore::new();
+    let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
+    let vector_store = VectorStore::new();
 
-    Ok(text_response(format!(
-        "Semantic search parsed query='{query}' limit={limit}. Vector store records: {}. Embedding search not yet implemented.",
-        store.count()
-    )))
+    let results = match open_existing_store() {
+        Ok(store) => store.search(
+            query,
+            limit,
+            None,
+            SearchMode::Or,
+            None,
+            SourceMatchMode::Like,
+        )?,
+        Err(_) => Vec::new(),
+    };
+
+    Ok(text_response(serde_json::to_string_pretty(&json!({
+        "results": format_results(results),
+        "note": SEMANTIC_FALLBACK_NOTE,
+        "vector_records": vector_store.count(),
+    }))?))
 }
 
 pub async fn ctx_index_embeddings(params: Value) -> Result<Value> {
@@ -30,11 +48,15 @@ pub async fn ctx_index_embeddings(params: Value) -> Result<Value> {
         .get("source")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
+    let mut store = open_store()?;
+    let indexed = store.index_plain_text(content, source, 20)?;
 
-    Ok(text_response(format!(
-        "Embedding indexing not yet implemented. Parsed source='{source}', content_bytes={}.",
-        content.len()
-    )))
+    Ok(text_response(serde_json::to_string_pretty(&json!({
+        "indexed": indexed.total_chunks,
+        "source": source,
+        "chunks": indexed.total_chunks,
+        "type": "embedding-fallback",
+    }))?))
 }
 
 pub async fn ctx_context_pack(params: Value) -> Result<Value> {
@@ -43,9 +65,75 @@ pub async fn ctx_context_pack(params: Value) -> Result<Value> {
         .get("token_budget")
         .or_else(|| params.get("tokenBudget"))
         .and_then(|v| v.as_u64())
-        .unwrap_or(4000);
+        .unwrap_or(4000) as usize;
+    let store = open_existing_store()?;
+    let mut results = store.search(query, 50, None, SearchMode::Or, None, SourceMatchMode::Like)?;
+    results.sort_by(|a, b| a.rank.total_cmp(&b.rank));
 
-    Ok(text_response(format!(
-        "Context pack parsed query='{query}' token_budget={token_budget}. Context packing not yet implemented."
-    )))
+    let mut packed = Vec::new();
+    let mut sources = Vec::new();
+    let mut chars_used = 0usize;
+    let char_budget = token_budget.saturating_mul(4);
+
+    for result in results {
+        let block = format!(
+            "## {} ({})\n{}",
+            result.title, result.source, result.content
+        );
+        let block_chars = block.chars().count();
+        if chars_used + block_chars > char_budget {
+            break;
+        }
+
+        chars_used += block_chars;
+        sources.push(json!({
+            "title": result.title,
+            "source": result.source,
+            "rank": result.rank,
+        }));
+        packed.push(block);
+    }
+
+    Ok(text_response(serde_json::to_string_pretty(&json!({
+        "packed_text": packed.join("\n\n"),
+        "sources": sources,
+        "token_estimate": chars_used.div_ceil(4),
+    }))?))
+}
+
+fn open_existing_store() -> Result<ContentStore> {
+    let path = Path::new(".context-mode/store.db");
+    if !path.exists() {
+        anyhow::bail!("content store db not found");
+    }
+    ContentStore::open(path).map_err(Into::into)
+}
+
+fn open_store() -> Result<ContentStore> {
+    let path = Path::new(".context-mode/store.db");
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    ContentStore::open(path)
+        .or_else(|_| ContentStore::in_memory())
+        .map_err(Into::into)
+}
+
+fn format_results(results: Vec<SearchResult>) -> Vec<Value> {
+    results
+        .into_iter()
+        .map(|result| {
+            json!({
+                "title": result.title,
+                "content": result.content,
+                "source": result.source,
+                "rank": result.rank,
+                "content_type": result.content_type,
+                "match_layer": result.match_layer,
+                "highlighted": result.highlighted,
+                "timestamp": result.timestamp,
+                "confidence": result.confidence,
+            })
+        })
+        .collect()
 }

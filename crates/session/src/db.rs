@@ -467,3 +467,24 @@ fn row_to_resume(row: &rusqlite::Row<'_>) -> rusqlite::Result<ResumeRow> {
         consumed: row.get::<_, i64>(5)? != 0,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_initializes_session_tables() {
+        let db = SessionDB::new(Connection::open_in_memory().unwrap()).unwrap();
+
+        let table_count: i64 = db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('session_events', 'session_meta', 'session_resume', 'tool_calls')",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+
+        assert_eq!(table_count, 4);
+    }
+}

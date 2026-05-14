@@ -1,7 +1,9 @@
 pub mod batch;
+pub mod code_analysis;
 pub mod connectors;
 pub mod context_stream;
 pub mod execute;
+pub mod fetch_index;
 pub mod register;
 pub mod search;
 pub mod snippet;

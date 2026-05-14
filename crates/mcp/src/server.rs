@@ -47,6 +47,13 @@ struct CtxIndexParams {
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxFetchAndIndexParams {
+    url: String,
+    timeout: Option<u64>,
+    source: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxSearchParams {
     queries: Vec<String>,
     limit: Option<usize>,
@@ -91,6 +98,22 @@ struct CtxContextPackParams {
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxConnectorAddParams {
     name: String,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxDeadCodeParams {
+    path: String,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxComplexityParams {
+    path: String,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxDepGraphParams {
+    paths: Option<Vec<String>>,
+    path: Option<String>,
 }
 
 fn params_to_value<T: serde::Serialize>(params: T) -> serde_json::Value {
@@ -150,9 +173,13 @@ impl ContextModeServer {
         call_tool(|| context_mode_tools::search::ctx_search(value)).await
     }
 
-    #[tool(description = "Fetch remote content and index it. Not yet implemented in Rust server.")]
-    async fn ctx_fetch_and_index(&self, Parameters(_params): Parameters<CtxIndexParams>) -> String {
-        "Not yet implemented".to_string()
+    #[tool(description = "Fetch remote content and index it.")]
+    async fn ctx_fetch_and_index(
+        &self,
+        Parameters(params): Parameters<CtxFetchAndIndexParams>,
+    ) -> String {
+        let value = params_to_value(params);
+        call_tool(|| context_mode_tools::fetch_index::ctx_fetch_and_index(value)).await
     }
 
     #[tool(description = "Show context-mode session statistics.")]
@@ -167,7 +194,7 @@ impl ContextModeServer {
 
     #[tool(description = "Show current context-mode server version.")]
     async fn ctx_upgrade(&self) -> String {
-        "1.0.0".to_string()
+        env!("CARGO_PKG_VERSION").to_string()
     }
 
     #[tool(description = "Purge the context-mode knowledge base and reset session stats.")]
@@ -178,8 +205,9 @@ impl ContextModeServer {
     #[tool(description = "Return the context-mode insight dashboard URL.")]
     async fn ctx_insight(&self) -> String {
         format_tool_result(json!({
-            "content": [{ "type": "text", "text": "Insight dashboard URL: http://127.0.0.1:3030" }],
-            "isError": false
+            "url": "http://127.0.0.1:3030",
+            "running": false,
+            "note": "Insight dashboard not yet started. Run the insight server binary manually."
         }))
     }
 
@@ -230,19 +258,22 @@ impl ContextModeServer {
         call_tool(|| context_mode_tools::vault::ctx_vault_graph(value)).await
     }
 
-    #[tool(description = "Find dead code. Not yet implemented in Rust server.")]
-    async fn ctx_dead_code(&self) -> String {
-        "Not yet implemented".to_string()
+    #[tool(description = "Find potentially dead functions and methods in a source file.")]
+    async fn ctx_dead_code(&self, Parameters(params): Parameters<CtxDeadCodeParams>) -> String {
+        let value = params_to_value(params);
+        call_tool(|| context_mode_tools::code_analysis::ctx_dead_code(value)).await
     }
 
-    #[tool(description = "Analyze code complexity. Not yet implemented in Rust server.")]
-    async fn ctx_complexity(&self) -> String {
-        "Not yet implemented".to_string()
+    #[tool(description = "Estimate function and method cyclomatic complexity in a source file.")]
+    async fn ctx_complexity(&self, Parameters(params): Parameters<CtxComplexityParams>) -> String {
+        let value = params_to_value(params);
+        call_tool(|| context_mode_tools::code_analysis::ctx_complexity(value)).await
     }
 
-    #[tool(description = "Build dependency graph. Not yet implemented in Rust server.")]
-    async fn ctx_dep_graph(&self) -> String {
-        "Not yet implemented".to_string()
+    #[tool(description = "Build dependency graph edges from source file imports.")]
+    async fn ctx_dep_graph(&self, Parameters(params): Parameters<CtxDepGraphParams>) -> String {
+        let value = params_to_value(params);
+        call_tool(|| context_mode_tools::code_analysis::ctx_dep_graph(value)).await
     }
 
     #[tool(description = "List configured context-mode connectors.")]

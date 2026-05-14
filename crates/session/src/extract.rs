@@ -270,3 +270,23 @@ fn matches_regex(text: &str, pattern: &str) -> bool {
         .map(|re| re.is_match(text))
         .unwrap_or(false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_events_records_mcp_tool_call() {
+        let events = extract_events(HookInput {
+            tool_name: "mcp__context7__query-docs".to_string(),
+            tool_input: serde_json::json!({ "library": "serde" }),
+            ..HookInput::default()
+        });
+
+        assert!(
+            events
+                .iter()
+                .any(|event| event.event_type == "mcp_tool_call")
+        );
+    }
+}

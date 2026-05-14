@@ -173,3 +173,22 @@ pub fn format_report(report: &FullReport) -> String {
 fn estimate_tokens(bytes: i64) -> i64 {
     (bytes.max(0) as f64 / 4.0).round() as i64
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    #[test]
+    fn records_tool_call_and_reads_stats() {
+        let db = SessionDB::new(Connection::open_in_memory().unwrap()).unwrap();
+        db.increment_tool_call("session-1", "ctx_search", 128)
+            .unwrap();
+
+        let stats = db.get_tool_call_stats("session-1").unwrap();
+
+        assert_eq!(stats.total_calls, 1);
+        assert_eq!(stats.total_bytes_returned, 128);
+        assert_eq!(stats.by_tool[0].tool, "ctx_search");
+    }
+}

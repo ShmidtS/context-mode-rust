@@ -124,3 +124,16 @@ fn escape_xml(input: &str) -> String {
         .replace('"', "&quot;")
         .replace('\'', "&apos;")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_resume_snapshot_includes_current_timestamp() {
+        let snapshot = build_resume_snapshot(&[], None);
+
+        assert!(snapshot.contains("<session_resume generated_at=\""));
+        assert!(snapshot.contains("</session_resume>"));
+    }
+}
