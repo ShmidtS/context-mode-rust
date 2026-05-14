@@ -92,7 +92,10 @@ async fn main() -> anyhow::Result<()> {
             let json = serde_json::to_string_pretty(&results)?;
             println!("{}", json);
         }
-        Some(Commands::Hook { platform, hook_type }) => {
+        Some(Commands::Hook {
+            platform,
+            hook_type,
+        }) => {
             hook::run(&platform, &hook_type).await?;
         }
         None => {
@@ -158,12 +161,7 @@ mod tests {
 
     #[test]
     fn test_cli_parse_hook() {
-        let args = Args::parse_from([
-            "context-mode",
-            "hook",
-            "claude-code",
-            "posttooluse",
-        ]);
+        let args = Args::parse_from(["context-mode", "hook", "claude-code", "posttooluse"]);
         assert!(
             matches!(args.command, Some(Commands::Hook { platform, hook_type }) if platform == "claude-code" && hook_type == "posttooluse")
         );

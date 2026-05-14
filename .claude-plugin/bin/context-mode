@@ -11,7 +11,7 @@ elif [ -x "$SCRIPT_DIR/context-mode" ]; then
 fi
 
 # Fallback to cargo-built debug/release binary
-for target in "$SCRIPT_DIR/../../../target/release/context-mode" "$SCRIPT_DIR/../../../target/debug/context-mode" "$SCRIPT_DIR/../../../target/release/context-mode.exe" "$SCRIPT_DIR/../../../target/debug/context-mode.exe"; do
+for target in "$SCRIPT_DIR/../../target/release/context-mode" "$SCRIPT_DIR/../../target/debug/context-mode" "$SCRIPT_DIR/../../target/release/context-mode.exe" "$SCRIPT_DIR/../../target/debug/context-mode.exe"; do
     if [ -x "$target" ]; then
         exec "$target" "$@"
     fi

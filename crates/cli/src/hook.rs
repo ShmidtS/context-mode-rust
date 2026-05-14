@@ -3,15 +3,14 @@ use serde_json::Value;
 use std::io::{self, Read};
 use std::path::PathBuf;
 
+use context_mode_adapters::types::{
+    PostToolUseResponse, PreCompactResponse, PreToolUseDecision, PreToolUseResponse,
+};
 use context_mode_session::{
     db::SessionDB,
     extract::{extract_events, extract_user_events},
     snapshot::build_resume_snapshot,
     types::{BuildSnapshotOpts, HookInput, SessionEvent},
-};
-use context_mode_adapters::types::{
-    PreToolUseDecision, PreToolUseResponse, PostToolUseResponse,
-    PreCompactResponse,
 };
 
 pub async fn run(_platform: &str, hook_type: &str) -> Result<()> {
@@ -72,7 +71,10 @@ async fn handle_pre_tool_use(_input: &str) -> Result<()> {
 
 async fn handle_pre_compact(db: &SessionDB, input: &str) -> Result<()> {
     let value: Value = serde_json::from_str(input)?;
-    let session_id = value.get("session_id").and_then(|v| v.as_str()).unwrap_or("");
+    let session_id = value
+        .get("session_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
     if !session_id.is_empty() {
         let events = db.get_events(session_id, None)?;
@@ -217,7 +219,10 @@ async fn handle_user_prompt_submit(db: &SessionDB, input: &str) -> Result<()> {
 
 fn parse_hook_input(value: &Value) -> HookInput {
     HookInput {
-        session_id: value.get("session_id").and_then(|v| v.as_str()).map(String::from),
+        session_id: value
+            .get("session_id")
+            .and_then(|v| v.as_str())
+            .map(String::from),
         transcript_path: value
             .get("transcript_path")
             .and_then(|v| v.as_str())

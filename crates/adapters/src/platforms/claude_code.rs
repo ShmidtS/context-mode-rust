@@ -21,7 +21,11 @@ impl HookAdapter for ClaudeCodeAdapter {
         for hook_type in &hook_types {
             let script = build_hook_script(hook_type);
             let path = installer.install_hook("claude-code", hook_type, &script)?;
-            installed.push(format!("Installed {} hook at {}", hook_type, path.display()));
+            installed.push(format!(
+                "Installed {} hook at {}",
+                hook_type,
+                path.display()
+            ));
         }
         Ok(installed)
     }
@@ -66,12 +70,14 @@ impl HookAdapter for ClaudeCodeAdapter {
 
 fn build_hook_script(hook_type: &str) -> String {
     if cfg!(windows) {
-        format!("@echo off\ncontext-mode hook claude-code {} %*\n", hook_type)
+        format!(
+            "@echo off\ncontext-mode hook claude-code {} %*\n",
+            hook_type
+        )
     } else {
         format!(
             "#!/bin/sh\ncontext-mode hook claude-code {} \"{}\"\n",
-            hook_type,
-            "$@"
+            hook_type, "$@"
         )
     }
 }

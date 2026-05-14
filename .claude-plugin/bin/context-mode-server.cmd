@@ -9,8 +9,8 @@ if exist "!SCRIPT_DIR!context-mode-server.exe" (
 )
 
 for %%t in (
-    "!SCRIPT_DIR!..\..\..\target\release\context-mode-server.exe"
-    "!SCRIPT_DIR!..\..\..\target\debug\context-mode-server.exe"
+    "!SCRIPT_DIR!..\..\target\release\context-mode-server.exe"
+    "!SCRIPT_DIR!..\..\target\debug\context-mode-server.exe"
 ) do (
     if exist %%t (
         %%t %*
