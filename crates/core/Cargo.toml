@@ -1,0 +1,27 @@
+[package]
+name = "context-mode-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+rusqlite = { workspace = true }
+tokio = { workspace = true }
+regex = { workspace = true }
+tempfile = { workspace = true }
+which = "7.0"
+walkdir = { workspace = true }
+notify = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+dirs = { workspace = true }
+
+[dev-dependencies]

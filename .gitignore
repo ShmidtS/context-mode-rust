@@ -1,0 +1,8 @@
+/target
+Cargo.lock
+*.swp
+*.swo
+/test_out.txt
+/.omc/state/sessions/current/test_out.txt
+.omc/
+tests/
