@@ -38,3 +38,10 @@ jobs:
 
       - name: Build release binaries
         run: cargo build --workspace --release
+
+      - name: Upload MCP server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-mode-server-${{ matrix.os }}
+          path: target/release/context-mode-server${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest' || matrix.os == 'windows-latest'

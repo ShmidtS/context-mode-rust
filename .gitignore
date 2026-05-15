@@ -29,6 +29,8 @@ context-mode-guidance-*/
 meta.json
 bench-analytics.ts
 test-analytics.mjs
+
+# Pre-built binaries (downloaded from GitHub releases or built locally)
 /.claude-plugin/bin/*.exe
 
 # cargo install artifacts
