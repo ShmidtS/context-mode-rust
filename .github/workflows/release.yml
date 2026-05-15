@@ -36,11 +36,15 @@ jobs:
       - name: Build release binary
         run: cargo build --bin context-mode-server --release --target ${{ matrix.target }}
 
+      - name: Rename binary for artifact
+        run: |
+          cp target/${{ matrix.target }}/release/context-mode-server${{ matrix.os == 'windows-latest' && '.exe' || '' }} ${{ matrix.asset }}
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
-          path: target/${{ matrix.target }}/release/context-mode-server${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          path: ${{ matrix.asset }}
 
   release:
     needs: build
