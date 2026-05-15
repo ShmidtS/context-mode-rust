@@ -9,7 +9,7 @@ const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || fileURLToPath(new URL('.',
 const IS_WIN = platform() === 'win32';
 const EXT = IS_WIN ? '.exe' : '';
 const BIN_NAME = `context-mode-server${EXT}`;
-const VERSION = '1.0.7';
+const VERSION = '1.0.8';
 
 function log(...args) {
   console.error('[context-mode]', ...args);
