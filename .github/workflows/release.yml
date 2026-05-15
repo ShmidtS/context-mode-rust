@@ -17,12 +17,15 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             asset: context-mode-server-linux-x86_64
+            cli_asset: context-mode-linux-x86_64
           - os: macos-latest
             target: aarch64-apple-darwin
             asset: context-mode-server-macos-aarch64
+            cli_asset: context-mode-macos-aarch64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             asset: context-mode-server-windows-x86_64.exe
+            cli_asset: context-mode-windows-x86_64.exe
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -33,18 +36,27 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
 
-      - name: Build release binary
-        run: cargo build --bin context-mode-server --release --target ${{ matrix.target }}
+      - name: Build release binaries
+        run: |
+          cargo build --bin context-mode-server --release --target ${{ matrix.target }}
+          cargo build --bin context-mode --release --target ${{ matrix.target }}
 
-      - name: Rename binary for artifact
+      - name: Rename binaries for artifact
         run: |
           cp target/${{ matrix.target }}/release/context-mode-server${{ matrix.os == 'windows-latest' && '.exe' || '' }} ${{ matrix.asset }}
+          cp target/${{ matrix.target }}/release/context-mode${{ matrix.os == 'windows-latest' && '.exe' || '' }} ${{ matrix.cli_asset }}
 
-      - name: Upload artifact
+      - name: Upload server artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
           path: ${{ matrix.asset }}
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.cli_asset }}
+          path: ${{ matrix.cli_asset }}
 
   release:
     needs: build
