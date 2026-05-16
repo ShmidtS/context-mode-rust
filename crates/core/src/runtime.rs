@@ -152,12 +152,21 @@ fn detect_command(cmd: &str) -> Option<String> {
 }
 
 fn detect_bun() -> Option<String> {
-    detect_command("bun").or_else(|| {
-        let candidates = bun_fallback_paths();
-        candidates
-            .into_iter()
-            .find(|candidate| Path::new(candidate).exists())
-    })
+    detect_command("bun")
+        .filter(|path| {
+            // On Windows, non-.exe wrappers (npm shims) can't be spawned with Command::new
+            if cfg!(windows) {
+                path.to_ascii_lowercase().ends_with(".exe")
+            } else {
+                true
+            }
+        })
+        .or_else(|| {
+            let candidates = bun_fallback_paths();
+            candidates
+                .into_iter()
+                .find(|candidate| Path::new(candidate).exists())
+        })
 }
 
 fn bun_fallback_paths() -> Vec<String> {

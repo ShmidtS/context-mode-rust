@@ -2,7 +2,7 @@ use crate::chunking::{chunk_markdown, chunk_plain_text, walk_json};
 use crate::reranking::apply_proximity_reranking;
 use crate::schema::{PREPARED_STATEMENTS, init_schema};
 use crate::search_helpers::{
-    SearchCoreParams, SearchStmts, content_type_to_str, sanitize_query, sanitize_trigram_query,
+    SearchCoreParams, SearchStmts, sanitize_query, sanitize_trigram_query,
     search_core,
 };
 use crate::types::{
@@ -818,11 +818,6 @@ pub fn cleanup_stale_content_dbs<P: AsRef<Path>>(content_dir: P, max_age_days: u
         }
     }
     cleaned
-}
-
-#[allow(dead_code)]
-fn _content_type_param(content_type: ContentType) -> &'static str {
-    content_type_to_str(content_type)
 }
 
 #[cfg(test)]

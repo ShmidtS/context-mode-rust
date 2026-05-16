@@ -1,9 +1,7 @@
 use anyhow::{Result, anyhow};
-use context_mode_store::ContentStore;
 use once_cell::sync::Lazy;
 use serde_json::json;
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -24,7 +22,7 @@ pub async fn ctx_fetch_and_index(params: serde_json::Value) -> Result<serde_json
     let params: FetchAndIndexParams = serde_json::from_value(params)?;
     let (markdown, status, cached) = fetch_markdown(&params).await?;
     let content_length = markdown.len();
-    let mut store = open_store()?;
+    let mut store = crate::store_util::open_store()?;
     store.index_content(
         markdown,
         params.source.unwrap_or_else(|| params.url.clone()),
@@ -80,12 +78,3 @@ fn set_cached(url: String, content: String) {
     }
 }
 
-fn open_store() -> Result<ContentStore> {
-    let path = Path::new(".context-mode/store.db");
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    ContentStore::open(path)
-        .or_else(|_| ContentStore::in_memory())
-        .map_err(Into::into)
-}

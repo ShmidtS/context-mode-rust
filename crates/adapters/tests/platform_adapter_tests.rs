@@ -1,11 +1,12 @@
 use context_mode_adapters::base::BaseAdapter;
 use context_mode_adapters::detect::get_session_dir_segments;
 use context_mode_adapters::platforms::*;
+use context_mode_adapters::platforms::claude_code::ClaudeCodeAdapter;
 use context_mode_adapters::types::{HookAdapter, PlatformId};
 
 #[test]
 fn claude_code_platform_id_and_segments() {
-    let adapter = claude_code::ClaudeCodeAdapter;
+    let adapter = ClaudeCodeAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::ClaudeCode);
     assert_eq!(
         adapter.session_dir_segments(),
@@ -16,7 +17,7 @@ fn claude_code_platform_id_and_segments() {
 
 #[test]
 fn codex_platform_id_and_segments() {
-    let adapter = codex::CodexAdapter;
+    let adapter = CodexAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::Codex);
     assert_eq!(
         adapter.session_dir_segments(),
@@ -27,7 +28,7 @@ fn codex_platform_id_and_segments() {
 
 #[test]
 fn cursor_platform_id_and_segments() {
-    let adapter = cursor::CursorAdapter;
+    let adapter = CursorAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::Cursor);
     assert_eq!(
         adapter.session_dir_segments(),
@@ -38,7 +39,7 @@ fn cursor_platform_id_and_segments() {
 
 #[test]
 fn gemini_cli_platform_id_and_segments() {
-    let adapter = gemini_cli::GeminiCliAdapter;
+    let adapter = GeminiCliAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::GeminiCli);
     assert_eq!(
         adapter.session_dir_segments(),
@@ -49,7 +50,7 @@ fn gemini_cli_platform_id_and_segments() {
 
 #[test]
 fn jetbrains_copilot_platform_id_and_segments() {
-    let adapter = jetbrains_copilot::JetbrainsCopilotAdapter;
+    let adapter = JetbrainsCopilotAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::JetbrainsCopilot);
     assert_eq!(
         adapter.session_dir_segments(),
@@ -60,7 +61,7 @@ fn jetbrains_copilot_platform_id_and_segments() {
 
 #[test]
 fn kiro_platform_id_and_segments() {
-    let adapter = kiro::KiroAdapter;
+    let adapter = KiroAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::Kiro);
     assert_eq!(
         adapter.session_dir_segments(),
@@ -71,7 +72,7 @@ fn kiro_platform_id_and_segments() {
 
 #[test]
 fn openclaw_platform_id_and_segments() {
-    let adapter = openclaw::OpenClawAdapter;
+    let adapter = OpenClawAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::OpenClaw);
     assert_eq!(
         adapter.session_dir_segments(),
@@ -82,7 +83,7 @@ fn openclaw_platform_id_and_segments() {
 
 #[test]
 fn opencode_platform_id_and_segments() {
-    let adapter = opencode::OpenCodeAdapter;
+    let adapter = OpenCodeAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::OpenCode);
     assert_eq!(
         adapter.session_dir_segments(),
@@ -93,7 +94,7 @@ fn opencode_platform_id_and_segments() {
 
 #[test]
 fn qwen_code_platform_id_and_segments() {
-    let adapter = qwen_code::QwenCodeAdapter;
+    let adapter = QwenCodeAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::QwenCode);
     assert_eq!(
         adapter.session_dir_segments(),
@@ -104,7 +105,7 @@ fn qwen_code_platform_id_and_segments() {
 
 #[test]
 fn vscode_copilot_platform_id_and_segments() {
-    let adapter = vscode_copilot::VscodeCopilotAdapter;
+    let adapter = VscodeCopilotAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::VscodeCopilot);
     assert_eq!(
         adapter.session_dir_segments(),
@@ -115,7 +116,7 @@ fn vscode_copilot_platform_id_and_segments() {
 
 #[test]
 fn zed_platform_id_and_segments() {
-    let adapter = zed::ZedAdapter;
+    let adapter = ZedAdapter;
     assert_eq!(adapter.platform_id(), PlatformId::Zed);
     assert_eq!(
         adapter.session_dir_segments(),

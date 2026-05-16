@@ -1,17 +1,13 @@
 use anyhow::Result;
 use context_mode_search::VectorStore;
-use context_mode_store::{ContentStore, SearchMode, SearchResult, SourceMatchMode};
+use context_mode_store::{SearchMode, SearchResult, SourceMatchMode};
 use serde_json::{Value, json};
-use std::path::Path;
 
 const SEMANTIC_FALLBACK_NOTE: &str =
     "Semantic search requires embedding backend. Falling back to keyword search...";
 
 fn text_response(text: impl Into<String>) -> Value {
-    json!({
-        "content": [{ "type": "text", "text": text.into() }],
-        "isError": false
-    })
+    crate::store_util::text_response(text)
 }
 
 pub fn reset_context_stream() -> Result<()> {
@@ -23,7 +19,7 @@ pub async fn ctx_semantic_search(params: Value) -> Result<Value> {
     let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
     let vector_store = VectorStore::new();
 
-    let results = match open_existing_store() {
+    let results = match crate::store_util::open_existing_store() {
         Ok(store) => store.search(
             query,
             limit,
@@ -48,7 +44,7 @@ pub async fn ctx_index_embeddings(params: Value) -> Result<Value> {
         .get("source")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
-    let mut store = open_store()?;
+    let mut store = crate::store_util::open_store()?;
     let indexed = store.index_plain_text(content, source, 20)?;
 
     Ok(text_response(serde_json::to_string_pretty(&json!({
@@ -66,7 +62,7 @@ pub async fn ctx_context_pack(params: Value) -> Result<Value> {
         .or_else(|| params.get("tokenBudget"))
         .and_then(|v| v.as_u64())
         .unwrap_or(4000) as usize;
-    let store = open_existing_store()?;
+    let store = crate::store_util::open_existing_store()?;
     let mut results = store.search(query, 50, None, SearchMode::Or, None, SourceMatchMode::Like)?;
     results.sort_by(|a, b| a.rank.total_cmp(&b.rank));
 
@@ -99,24 +95,6 @@ pub async fn ctx_context_pack(params: Value) -> Result<Value> {
         "sources": sources,
         "token_estimate": chars_used.div_ceil(4),
     }))?))
-}
-
-fn open_existing_store() -> Result<ContentStore> {
-    let path = Path::new(".context-mode/store.db");
-    if !path.exists() {
-        anyhow::bail!("content store db not found");
-    }
-    ContentStore::open(path).map_err(Into::into)
-}
-
-fn open_store() -> Result<ContentStore> {
-    let path = Path::new(".context-mode/store.db");
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    ContentStore::open(path)
-        .or_else(|_| ContentStore::in_memory())
-        .map_err(Into::into)
 }
 
 fn format_results(results: Vec<SearchResult>) -> Vec<Value> {

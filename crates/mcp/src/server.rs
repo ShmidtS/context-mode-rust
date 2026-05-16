@@ -101,6 +101,39 @@ struct CtxConnectorAddParams {
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxLocalIndexParams {
+    path: String,
+    repo_id: Option<String>,
+    fresh: Option<bool>,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxLocalSearchParams {
+    query: String,
+    repo_id: Option<String>,
+    limit: Option<usize>,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxLocalStatusParams {
+    job_id: String,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxLocalReposParams {}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxLocalWatchParams {
+    path: String,
+    repo_id: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxLocalUnwatchParams {
+    repo_id: String,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxDeadCodeParams {
     path: String,
 }
@@ -114,6 +147,15 @@ struct CtxComplexityParams {
 struct CtxDepGraphParams {
     paths: Option<Vec<String>>,
     path: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+struct CtxGraphAnalyzeParams {
+    path: String,
+    god_node_limit: Option<usize>,
+    surprise_limit: Option<usize>,
+    community_limit: Option<usize>,
+    question_limit: Option<usize>,
 }
 
 fn params_to_value<T: serde::Serialize>(params: T) -> serde_json::Value {
@@ -131,7 +173,7 @@ where
     }
 }
 
-#[tool_router(server_handler)]
+#[tool_router]
 impl ContextModeServer {
     #[tool(
         description = "Execute code in a sandboxed subprocess. MANDATORY for output >20 lines. Supports 11 languages."
@@ -192,7 +234,7 @@ impl ContextModeServer {
         call_tool(context_mode_tools::stats::ctx_doctor).await
     }
 
-    #[tool(description = "Show current context-mode server version.")]
+    #[tool(description = "Return the current context-mode server version.")]
     async fn ctx_upgrade(&self) -> String {
         env!("CARGO_PKG_VERSION").to_string()
     }
@@ -276,6 +318,18 @@ impl ContextModeServer {
         call_tool(|| context_mode_tools::code_analysis::ctx_dep_graph(value)).await
     }
 
+    #[tool(description = "Analyze vault graph: detect god nodes, surprising connections, communities, and suggest questions.")]
+    async fn ctx_graph_analyze(
+        &self,
+        Parameters(params): Parameters<CtxGraphAnalyzeParams>,
+    ) -> String {
+        let mut value = params_to_value(&params);
+        if let serde_json::Value::Object(ref mut object) = value {
+            object.insert("path".to_string(), serde_json::Value::String(params.path));
+        }
+        call_tool(|| context_mode_tools::vault::ctx_graph_analyze(value)).await
+    }
+
     #[tool(description = "List configured context-mode connectors.")]
     async fn ctx_connector_list(&self) -> String {
         call_tool(context_mode_tools::connectors::ctx_connector_list).await
@@ -289,11 +343,111 @@ impl ContextModeServer {
         let value = params_to_value(params);
         call_tool(|| context_mode_tools::connectors::ctx_connector_add(value)).await
     }
+
+    #[tool(description = "Sync a context-mode connector.")]
+    async fn ctx_connector_sync(
+        &self,
+        Parameters(params): Parameters<CtxConnectorAddParams>,
+    ) -> String {
+        let value = params_to_value(params);
+        call_tool(|| context_mode_tools::connectors::ctx_connector_sync(value)).await
+    }
+
+    #[tool(description = "Index a local source code repository for semantic and full-text search.")]
+    async fn ctx_local_index(
+        &self,
+        Parameters(params): Parameters<CtxLocalIndexParams>,
+    ) -> String {
+        let value = params_to_value(params);
+        call_tool(|| context_mode_tools::local_index::ctx_local_index(value)).await
+    }
+
+    #[tool(description = "Search indexed local code repositories using FTS5 BM25.")]
+    async fn ctx_local_search(
+        &self,
+        Parameters(params): Parameters<CtxLocalSearchParams>,
+    ) -> String {
+        let value = params_to_value(params);
+        call_tool(|| context_mode_tools::local_index::ctx_local_search(value)).await
+    }
+
+    #[tool(description = "Check the status of a local indexing job.")]
+    async fn ctx_local_status(
+        &self,
+        Parameters(params): Parameters<CtxLocalStatusParams>,
+    ) -> String {
+        let value = params_to_value(params);
+        call_tool(|| context_mode_tools::local_index::ctx_local_status(value)).await
+    }
+
+    #[tool(description = "List all indexed local repositories.")]
+    async fn ctx_local_repos(
+        &self,
+        Parameters(_params): Parameters<CtxLocalReposParams>,
+    ) -> String {
+        let value = params_to_value(_params);
+        call_tool(|| context_mode_tools::local_index::ctx_local_repos(value)).await
+    }
+
+    #[tool(description = "Watch a local repository for changes and auto-reindex.")]
+    async fn ctx_local_watch(
+        &self,
+        Parameters(params): Parameters<CtxLocalWatchParams>,
+    ) -> String {
+        let value = params_to_value(params);
+        call_tool(|| context_mode_tools::local_index::ctx_local_watch(value)).await
+    }
+
+    #[tool(description = "Stop watching a local repository.")]
+    async fn ctx_local_unwatch(
+        &self,
+        Parameters(params): Parameters<CtxLocalUnwatchParams>,
+    ) -> String {
+        let value = params_to_value(params);
+        call_tool(|| context_mode_tools::local_index::ctx_local_unwatch(value)).await
+    }
 }
 
+#[rmcp::tool_handler(router = ContextModeServer::tool_router(), name = "context-mode")]
+impl rmcp::ServerHandler for ContextModeServer {}
+
 pub async fn run_server() -> anyhow::Result<()> {
+    // Cleanup stale temp DB files from dead processes
+    let cleaned = context_mode_store::cleanup_stale_dbs();
+    if cleaned > 0 {
+        eprintln!("[context-mode] Cleaned up {cleaned} stale DB file(s)");
+    }
+    // Cleanup stale content DBs in .context-mode/ older than 7 days
+    let content_cleaned = context_mode_store::cleanup_stale_content_dbs(".context-mode", 7);
+    if content_cleaned > 0 {
+        eprintln!("[context-mode] Cleaned up {content_cleaned} stale content DB(s)");
+    }
+
     let server = ContextModeServer;
     let service = server.serve(stdio()).await?;
-    service.waiting().await?;
+
+    tokio::select! {
+        result = service.waiting() => {
+            result?;
+        }
+        _ = shutdown_signal() => {
+            eprintln!("[context-mode] Received shutdown signal, exiting");
+        }
+    }
     Ok(())
+}
+
+#[cfg(unix)]
+async fn shutdown_signal() {
+    use tokio::signal::unix::{SignalKind, signal};
+    let mut sigterm = signal(SignalKind::terminate()).expect("failed to install SIGTERM handler");
+    tokio::select! {
+        _ = sigterm.recv() => {}
+        _ = tokio::signal::ctrl_c() => {}
+    }
+}
+
+#[cfg(not(unix))]
+async fn shutdown_signal() {
+    tokio::signal::ctrl_c().await.expect("failed to listen for ctrl+c event");
 }

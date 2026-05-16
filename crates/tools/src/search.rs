@@ -1,8 +1,7 @@
 use anyhow::Result;
 use context_mode_core::ContentType;
-use context_mode_store::{ContentStore, IndexOptions, SearchMode, SourceMatchMode};
+use context_mode_store::{IndexOptions, SearchMode, SourceMatchMode};
 use serde_json::json;
-use std::path::Path;
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct IndexParams {
@@ -24,7 +23,7 @@ pub struct SearchParams {
 
 pub async fn ctx_index(params: serde_json::Value) -> Result<serde_json::Value> {
     let params: IndexParams = serde_json::from_value(params)?;
-    let mut store = open_store()?;
+    let mut store = crate::store_util::open_store()?;
     let label = params
         .source
         .clone()
@@ -55,7 +54,7 @@ pub async fn ctx_index(params: serde_json::Value) -> Result<serde_json::Value> {
 
 pub async fn ctx_search(params: serde_json::Value) -> Result<serde_json::Value> {
     let params: SearchParams = serde_json::from_value(params)?;
-    let store = open_store()?;
+    let store = crate::store_util::open_store()?;
     let limit = params.limit.unwrap_or(3);
     let content_type = parse_content_type(params.content_type.as_deref());
     let mut text = String::new();
@@ -106,16 +105,6 @@ pub async fn ctx_search(params: serde_json::Value) -> Result<serde_json::Value> 
         "content": [{ "type": "text", "text": text }],
         "isError": false,
     }))
-}
-
-fn open_store() -> Result<ContentStore> {
-    let path = Path::new(".context-mode/store.db");
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    ContentStore::open(path)
-        .or_else(|_| ContentStore::in_memory())
-        .map_err(Into::into)
 }
 
 fn parse_content_type(content_type: Option<&str>) -> Option<ContentType> {

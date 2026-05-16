@@ -33,12 +33,12 @@ pub fn format_results(chunks: &[SearchChunk], max_tokens: usize) -> Vec<Formatte
 }
 
 fn truncate_content(content: &str, max_tokens: usize) -> String {
-    let words: Vec<&str> = content.split_whitespace().collect();
-    if words.len() <= max_tokens {
-        return content.to_string();
+    let truncated = context_mode_utils::truncate::truncate_tokens(content, max_tokens);
+    if truncated == content {
+        content.to_string()
+    } else {
+        format!("{}\n... (truncated)", truncated)
     }
-
-    format!("{}\n... (truncated)", words[..max_tokens].join(" "))
 }
 
 #[cfg(test)]

@@ -223,6 +223,75 @@ pub fn insert_vector(conn: &Connection, chunk_id: i64, vec: &[u8]) -> Result<()>
     Ok(())
 }
 
+/// A job record tracking indexing progress.
+#[derive(Debug, Clone)]
+pub struct JobRecord {
+    pub id: String,
+    pub repo_id: String,
+    pub status: String,
+    pub created_at: f64,
+    pub completed_at: Option<f64>,
+    pub error: Option<String>,
+    pub nodes_indexed: Option<i64>,
+    pub edges_indexed: Option<i64>,
+}
+
+/// Insert a new job record.
+pub fn insert_job(conn: &Connection, job: &JobRecord) -> Result<()> {
+    conn.execute(
+        "INSERT INTO jobs (id, repo_id, status, created_at, completed_at, error, nodes_indexed, edges_indexed) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![job.id, job.repo_id, job.status, job.created_at, job.completed_at, job.error, job.nodes_indexed, job.edges_indexed],
+    )?;
+    Ok(())
+}
+
+/// Update a job's status and completion fields.
+pub fn update_job_status(
+    conn: &Connection,
+    id: &str,
+    status: &str,
+    completed_at: Option<f64>,
+    error: Option<&str>,
+    nodes_indexed: Option<i64>,
+) -> Result<()> {
+    conn.execute(
+        "UPDATE jobs SET status = ?1, completed_at = ?2, error = ?3, nodes_indexed = ?4 WHERE id = ?5",
+        rusqlite::params![status, completed_at, error, nodes_indexed, id],
+    )?;
+    Ok(())
+}
+
+/// Get a job by ID.
+pub fn get_job(conn: &Connection, id: &str) -> Result<Option<JobRecord>> {
+    conn.query_row(
+        "SELECT id, repo_id, status, created_at, completed_at, error, nodes_indexed, edges_indexed FROM jobs WHERE id = ?1",
+        [id],
+        |row| {
+            Ok(JobRecord {
+                id: row.get(0)?,
+                repo_id: row.get(1)?,
+                status: row.get(2)?,
+                created_at: row.get(3)?,
+                completed_at: row.get(4)?,
+                error: row.get(5)?,
+                nodes_indexed: row.get(6)?,
+                edges_indexed: row.get(7)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(Into::into)
+}
+
+/// List all repos with their file counts.
+pub fn list_repos(conn: &Connection) -> Result<Vec<(String, i64)>> {
+    let mut stmt = conn.prepare("SELECT repo_id, COUNT(*) as files FROM files GROUP BY repo_id")?;
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+    })?;
+    rows.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
+}
+
 /// Delete vectors by chunk id.
 pub fn delete_vector_by_chunk(conn: &Connection, chunk_id: i64) -> Result<usize> {
     let count = conn.execute("DELETE FROM vectors WHERE chunk_id = ?1", [chunk_id])?;
@@ -408,5 +477,53 @@ mod tests {
         let count = delete_vector_by_chunk(&conn, 1).unwrap();
         assert_eq!(count, 1);
         assert!(get_vector_by_chunk(&conn, 1).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_list_repos() {
+        let conn = in_memory();
+        init_local_schema(&conn).unwrap();
+        insert_file(
+            &conn,
+            &FileRecord {
+                path: "a.rs".to_string(),
+                repo_id: "repo1".to_string(),
+                mtime: 0.0,
+                size: 1,
+                sha256: "a".to_string(),
+                indexed_at: 0.0,
+            },
+        )
+        .unwrap();
+        insert_file(
+            &conn,
+            &FileRecord {
+                path: "b.rs".to_string(),
+                repo_id: "repo1".to_string(),
+                mtime: 0.0,
+                size: 2,
+                sha256: "b".to_string(),
+                indexed_at: 0.0,
+            },
+        )
+        .unwrap();
+        insert_file(
+            &conn,
+            &FileRecord {
+                path: "c.rs".to_string(),
+                repo_id: "repo2".to_string(),
+                mtime: 0.0,
+                size: 3,
+                sha256: "c".to_string(),
+                indexed_at: 0.0,
+            },
+        )
+        .unwrap();
+        let repos = list_repos(&conn).unwrap();
+        assert_eq!(repos.len(), 2);
+        let repo1 = repos.iter().find(|(id, _)| id == "repo1").unwrap();
+        assert_eq!(repo1.1, 2);
+        let repo2 = repos.iter().find(|(id, _)| id == "repo2").unwrap();
+        assert_eq!(repo2.1, 1);
     }
 }

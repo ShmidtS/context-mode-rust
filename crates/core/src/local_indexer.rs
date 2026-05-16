@@ -11,6 +11,112 @@ use crate::db_schema::FileRecord;
 use crate::embedding::EmbeddingProvider;
 use crate::types::IndexResult;
 
+/// Report returned after indexing a repository.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct IndexReport {
+    pub files_indexed: usize,
+    pub chunks_indexed: usize,
+    pub id: String,
+    pub status: String,
+}
+
+/// High-level local indexer that manages its own DB connection.
+pub struct LocalIndexer {
+    conn: Connection,
+}
+
+impl LocalIndexer {
+    /// Open a local index DB. If `db_path` is `None`, opens the default on-disk DB
+    /// at `~/.context-mode/code-index.db`.
+    pub fn open(db_path: Option<&Path>) -> anyhow::Result<Self> {
+        let conn = match db_path {
+            Some(path) => {
+                if let Some(parent) = path.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+                Connection::open(path)?
+            }
+            None => {
+                let mut db_dir = context_mode_utils::paths::home_or_current();
+                db_dir.push(".context-mode");
+                let _ = std::fs::create_dir_all(&db_dir);
+                db_dir.push("code-index.db");
+                Connection::open(&db_dir)?
+            }
+        };
+        db_schema::init_local_schema(&conn)?;
+        Ok(Self { conn })
+    }
+
+    /// Get a reference to the underlying DB connection.
+    pub fn conn(&self) -> &Connection {
+        &self.conn
+    }
+
+    /// Index a repository rooted at `root` under the given `repo_id`.
+    /// If `fresh` is true, clears existing data for the repo first.
+    pub fn index_repository(
+        &mut self,
+        root: &Path,
+        repo_id: &str,
+        fresh: bool,
+    ) -> anyhow::Result<IndexReport> {
+        let job_id = format!("{}", chrono::Utc::now().format("%Y%m%d%H%M%S%f"));
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64();
+
+        // Create job record
+        let job = db_schema::JobRecord {
+            id: job_id.clone(),
+            repo_id: repo_id.to_string(),
+            status: "running".to_string(),
+            created_at: now,
+            completed_at: None,
+            error: None,
+            nodes_indexed: None,
+            edges_indexed: None,
+        };
+        db_schema::insert_job(&self.conn, &job)?;
+
+        if fresh {
+            // Remove all existing data for this repo
+            let existing = db_schema::list_files_by_repo(&self.conn, repo_id)?;
+            for file in existing {
+                let _ = db_schema::delete_chunks_by_file(&self.conn, &file.path);
+                let _ = db_schema::delete_file(&self.conn, &file.path);
+            }
+        }
+
+        let provider = crate::embedding::ZeroEmbeddingProvider::new();
+        let results = index_repository(&mut self.conn, repo_id, root, &provider)?;
+
+        let files_indexed = results.len();
+        let chunks_indexed: usize = results.iter().map(|r| r.total_chunks).sum();
+        let completed_at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64();
+
+        db_schema::update_job_status(
+            &self.conn,
+            &job_id,
+            "completed",
+            Some(completed_at),
+            None,
+            Some(chunks_indexed as i64),
+        )?;
+
+        Ok(IndexReport {
+            files_indexed,
+            chunks_indexed,
+            id: job_id,
+            status: "completed".to_string(),
+        })
+    }
+}
+
 /// Metadata collected from a file on disk before indexing.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FileMeta {

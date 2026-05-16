@@ -9,7 +9,7 @@ pub trait BaseAdapter: HookAdapter {
     fn session_dir_segments(&self) -> Vec<String>;
 
     fn session_dir(&self) -> Result<PathBuf, AdapterError> {
-        let mut dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        let mut dir = context_mode_utils::paths::home_or_current();
         for segment in self.session_dir_segments() {
             dir.push(&segment);
         }
@@ -32,7 +32,7 @@ pub trait BaseAdapter: HookAdapter {
     }
 
     fn config_dir(&self, _project_dir: Option<&Path>) -> PathBuf {
-        let mut dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        let mut dir = context_mode_utils::paths::home_or_current();
         for segment in self.session_dir_segments() {
             dir.push(&segment);
         }

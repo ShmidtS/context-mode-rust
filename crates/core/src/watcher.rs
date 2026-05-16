@@ -23,7 +23,7 @@ pub struct WatchList {
 
 impl WatchList {
     fn config_path() -> PathBuf {
-        let mut p = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        let mut p = context_mode_utils::paths::home_or_current();
         p.push(".context-mode");
         p.push("watched.json");
         p
@@ -68,8 +68,6 @@ pub fn is_ignorable(path: &Path) -> bool {
 /// Debounced file-system watcher built on `notify`.
 pub struct FileWatcher {
     watched: Arc<Mutex<HashSet<PathBuf>>>,
-    #[allow(dead_code)]
-    tx: mpsc::Sender<WatchEvent>,
     _watcher: RecommendedWatcher,
 }
 
@@ -99,7 +97,6 @@ impl FileWatcher {
 
         Ok(FileWatcher {
             watched: watched_clone,
-            tx,
             _watcher: watcher,
         })
     }

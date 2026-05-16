@@ -83,7 +83,7 @@ impl HookInstaller {
 
     fn default() -> Result<Self, AdapterError> {
         Ok(Self::new(
-            dirs::home_dir().unwrap_or_else(|| PathBuf::from(".")),
+            context_mode_utils::paths::home_or_current(),
         ))
     }
 

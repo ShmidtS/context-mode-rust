@@ -335,6 +335,7 @@ version = "1.0.10"
 dependencies = [
  "anyhow",
  "chrono",
+ "context-mode-utils",
  "dirs",
  "hex",
  "notify",
@@ -484,6 +485,7 @@ name = "context-mode-utils"
 version = "1.0.10"
 dependencies = [
  "anyhow",
+ "dirs",
  "regex",
  "serde",
  "serde_json",

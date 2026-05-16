@@ -1,13 +1,10 @@
 use anyhow::{Result, anyhow};
 use context_mode_vault::{IndexOpts, VaultGraphSearch, VaultGraphStore, index_vault};
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::path::{Path, PathBuf};
 
 fn text_response(text: impl Into<String>) -> Value {
-    json!({
-        "content": [{ "type": "text", "text": text.into() }],
-        "isError": false
-    })
+    crate::store_util::text_response(text)
 }
 
 fn graph_db_path() -> PathBuf {
@@ -107,4 +104,26 @@ pub async fn ctx_vault_graph(params: Value) -> Result<Value> {
     };
 
     Ok(text_response(format_graph_results(&results)))
+}
+
+pub async fn ctx_graph_analyze(params: Value) -> Result<Value> {
+    let vault_path = vault_path_from_params(&params).unwrap_or_default();
+    let opts = context_mode_vault::AnalyzeOpts {
+        god_node_limit: params.get("godNodeLimit").and_then(|v| v.as_u64()).map(|v| v as usize),
+        surprise_limit: params.get("surpriseLimit").and_then(|v| v.as_u64()).map(|v| v as usize),
+        community_limit: params.get("communityLimit").and_then(|v| v.as_u64()).map(|v| v as usize),
+        question_limit: params.get("questionLimit").and_then(|v| v.as_u64()).map(|v| v as usize),
+    };
+
+    let store = open_store(&vault_path)?;
+    let result = context_mode_vault::analyze_graph(&store, Some(opts))?;
+
+    Ok(text_response(format!(
+        "{summary}\n\nGod nodes: {god}\nSurprising connections: {surprise}\nCommunity hints: {comm}\nSuggested questions: {q}",
+        summary = result.summary,
+        god = result.god_nodes.len(),
+        surprise = result.surprising_connections.len(),
+        comm = result.community_hints.len(),
+        q = result.suggested_questions.len(),
+    )))
 }

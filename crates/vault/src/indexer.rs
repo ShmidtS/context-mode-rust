@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use thiserror::Error;
 use walkdir::{DirEntry, WalkDir};
 
@@ -391,7 +391,4 @@ pub fn index_vault(
     Ok(result)
 }
 
-#[allow(dead_code)]
-fn _abs(root: &Path, rel: &str) -> PathBuf {
-    root.join(rel)
-}
+
