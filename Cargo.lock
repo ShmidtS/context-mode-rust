@@ -290,7 +290,7 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
 name = "context-mode-adapters"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "context-mode-core",
@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "context-mode-cli"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -331,7 +331,7 @@ dependencies = [
 
 [[package]]
 name = "context-mode-core"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -355,7 +355,7 @@ dependencies = [
 
 [[package]]
 name = "context-mode-insight"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -380,7 +380,7 @@ dependencies = [
 
 [[package]]
 name = "context-mode-search"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -397,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "context-mode-server"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -420,7 +420,7 @@ dependencies = [
 
 [[package]]
 name = "context-mode-session"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -439,7 +439,7 @@ dependencies = [
 
 [[package]]
 name = "context-mode-store"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -460,7 +460,7 @@ dependencies = [
 
 [[package]]
 name = "context-mode-tools"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "context-mode-core",
@@ -482,7 +482,7 @@ dependencies = [
 
 [[package]]
 name = "context-mode-utils"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "dirs",
@@ -495,7 +495,7 @@ dependencies = [
 
 [[package]]
 name = "context-mode-vault"
-version = "1.0.10"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "chrono",

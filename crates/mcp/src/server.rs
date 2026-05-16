@@ -9,113 +9,161 @@ pub struct ContextModeServer;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxExecuteParams {
+    #[schemars(description = "Programming language for the code snippet (e.g., 'python', 'shell', 'javascript')")]
     language: String,
+    #[schemars(description = "Source code to execute in the sandbox")]
     code: String,
+    #[schemars(description = "Maximum execution time in milliseconds (default: 30000)")]
     timeout: Option<u64>,
+    #[schemars(description = "Run in background without waiting for completion")]
     background: Option<bool>,
+    #[schemars(description = "Natural-language intent describing what the code should produce, used for output summarization")]
     intent: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxExecuteFileParams {
+    #[schemars(description = "Absolute path to the file to analyze")]
     path: String,
+    #[schemars(description = "Programming language for the analysis code (e.g., 'python', 'shell', 'javascript')")]
     language: String,
+    #[schemars(description = "Source code that reads FILE_CONTENT and produces output")]
     code: String,
+    #[schemars(description = "Maximum execution time in milliseconds (default: 30000)")]
     timeout: Option<u64>,
+    #[schemars(description = "Natural-language intent describing what the code should produce")]
     intent: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxBatchExecuteParams {
+    #[schemars(description = "List of labeled shell commands to execute in parallel")]
     commands: Vec<CtxBatchCommand>,
+    #[schemars(description = "BM25 search queries against combined stdout of all commands")]
     queries: Option<Vec<String>>,
+    #[schemars(description = "Max number of commands to run concurrently (default: unlimited)")]
     concurrency: Option<u64>,
+    #[schemars(description = "Per-command timeout in milliseconds (default: 30000)")]
     timeout: Option<u64>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxBatchCommand {
+    #[schemars(description = "Human-readable label for the command, used in output")]
     label: String,
+    #[schemars(description = "Shell command string to execute")]
     command: String,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxIndexParams {
+    #[schemars(description = "Raw text content to index directly")]
     content: Option<String>,
+    #[schemars(description = "Absolute path to a file to read and index server-side")]
     path: Option<String>,
+    #[schemars(description = "Source tag for attribution (e.g., 'Zod', 'React')")]
     source: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxFetchAndIndexParams {
+    #[schemars(description = "URL to fetch and index")]
     url: String,
+    #[schemars(description = "HTTP request timeout in milliseconds")]
     timeout: Option<u64>,
+    #[schemars(description = "Source tag for attribution")]
     source: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxSearchParams {
+    #[schemars(description = "BM25 search queries (OR semantics — more matching terms rank higher)")]
     queries: Vec<String>,
+    #[schemars(description = "Maximum number of results to return")]
     limit: Option<usize>,
+    #[schemars(description = "Filter results by source tag")]
     source: Option<String>,
+    #[schemars(description = "Filter results by MIME-like content type")]
     content_type: Option<String>,
+    #[schemars(description = "Result ordering (default: relevance)")]
     sort: Option<String>,
+    #[schemars(description = "Approximate max tokens to return")]
     token_budget: Option<usize>,
+    #[schemars(description = "Minimum FTS5 match score threshold")]
     min_confidence: Option<f32>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxVaultIndexParams {
+    #[schemars(description = "Absolute path to the markdown vault directory to index")]
     path: String,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxVaultGraphParams {
+    #[schemars(description = "Traversal mode: neighbors, backlinks, tag-cluster, surprises, confidence-filter")]
     mode: String,
+    #[schemars(description = "Starting vault note path for graph traversal")]
     node_path: Option<String>,
+    #[schemars(description = "Maximum BFS hops from the starting node")]
     max_hops: Option<usize>,
+    #[schemars(description = "Filter results by frontmatter tag")]
     tag: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxSemanticSearchParams {
+    #[schemars(description = "Natural-language query for semantic vector search")]
     query: String,
+    #[schemars(description = "Maximum number of results to return")]
     limit: Option<usize>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxIndexEmbeddingsParams {
+    #[schemars(description = "Raw text to embed and store in the vector index")]
     content: String,
+    #[schemars(description = "Source tag for attribution")]
     source: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxContextPackParams {
+    #[schemars(description = "Natural-language query describing the context needed")]
     query: String,
+    #[schemars(description = "Approximate max tokens for the returned context pack")]
     token_budget: Option<usize>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxConnectorAddParams {
+    #[schemars(description = "Unique connector name to add or reference")]
     name: String,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxLocalIndexParams {
+    #[schemars(description = "Absolute path to the code repository to index")]
     path: String,
+    #[schemars(description = "Custom repository identifier (default: derived from path)")]
     repo_id: Option<String>,
+    #[schemars(description = "Force full reindex instead of incremental update")]
     fresh: Option<bool>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxLocalSearchParams {
+    #[schemars(description = "FTS5 BM25 query against indexed code")]
     query: String,
+    #[schemars(description = "Repository identifier to search within")]
     repo_id: Option<String>,
+    #[schemars(description = "Maximum number of results to return")]
     limit: Option<usize>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxLocalStatusParams {
+    #[schemars(description = "Indexing job identifier returned by ctx_local_index")]
     job_id: String,
 }
 
@@ -124,37 +172,49 @@ struct CtxLocalReposParams {}
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxLocalWatchParams {
+    #[schemars(description = "Absolute path to the repository to watch for changes")]
     path: String,
+    #[schemars(description = "Custom repository identifier")]
     repo_id: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxLocalUnwatchParams {
+    #[schemars(description = "Repository identifier to stop watching")]
     repo_id: String,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxDeadCodeParams {
+    #[schemars(description = "Absolute path to the source file to analyze")]
     path: String,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxComplexityParams {
+    #[schemars(description = "Absolute path to the source file to analyze")]
     path: String,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxDepGraphParams {
+    #[schemars(description = "List of source file paths to analyze")]
     paths: Option<Vec<String>>,
+    #[schemars(description = "Single source file path to analyze")]
     path: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxGraphAnalyzeParams {
+    #[schemars(description = "Absolute path to the indexed vault directory")]
     path: String,
+    #[schemars(description = "Max number of high-centrality (god) nodes to report")]
     god_node_limit: Option<usize>,
+    #[schemars(description = "Max number of unexpected cross-community links to report")]
     surprise_limit: Option<usize>,
+    #[schemars(description = "Max number of note communities to report")]
     community_limit: Option<usize>,
+    #[schemars(description = "Max number of follow-up questions to suggest")]
     question_limit: Option<usize>,
 }
 
