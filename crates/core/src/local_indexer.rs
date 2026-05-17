@@ -203,19 +203,25 @@ pub fn diff_with_db(
     Ok((to_add, to_remove))
 }
 
-fn block_on_future<F: std::future::Future>(f: F) -> F::Output {
-    match tokio::runtime::Handle::try_current() {
-        Ok(handle) => handle.block_on(f),
-        Err(_) => tokio::runtime::Runtime::new().unwrap().block_on(f),
-    }
+fn block_on_future<P: EmbeddingProvider + Clone + Send + 'static>(
+    provider: P,
+    texts: Vec<String>,
+) -> anyhow::Result<Vec<Vec<f32>>> {
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(provider.embed(&texts))
+            .map_err(|e| anyhow::anyhow!("embed error: {}", e))
+    })
+    .join()
+    .map_err(|e| anyhow::anyhow!("thread panicked: {:?}", e))?
 }
 
 /// Index a single file: chunk, insert into DB, store embeddings via `provider`.
-pub fn index_file(
+pub fn index_file<P: EmbeddingProvider + Clone + Send + 'static>(
     conn: &mut Connection,
     repo: &str,
     file: &FileMeta,
-    provider: &impl EmbeddingProvider,
+    provider: &P,
 ) -> anyhow::Result<IndexResult> {
     let content = std::fs::read_to_string(&file.path).unwrap_or_default();
     let path_str = file.path.to_string_lossy().into_owned();
@@ -246,8 +252,8 @@ pub fn index_file(
         code += 1;
 
         let texts = vec![chunk.content.clone()];
-        let embeddings = block_on_future(provider.embed(&texts));
-        let vec = embeddings.map_err(|e| anyhow::anyhow!("embed error: {}", e))?;
+        let embeddings = block_on_future(provider.clone(), texts)?;
+        let vec = embeddings;
         let bytes: Vec<u8> = vec[0].iter().flat_map(|f| f.to_le_bytes()).collect();
         let _ = db_schema::insert_vector(conn, chunk_id, &bytes);
     }
@@ -261,11 +267,11 @@ pub fn index_file(
 }
 
 /// Full repository indexing pipeline.
-pub fn index_repository(
+pub fn index_repository<P: EmbeddingProvider + Clone + Send + 'static>(
     conn: &mut Connection,
     repo: &str,
     root: impl AsRef<Path>,
-    provider: &impl EmbeddingProvider,
+    provider: &P,
 ) -> anyhow::Result<Vec<IndexResult>> {
     let metas = collect_file_metas(root);
     let (to_add, to_remove) = diff_with_db(conn, repo, &metas)?;
