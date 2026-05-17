@@ -270,22 +270,16 @@ struct AnalysisRequest {
 }
 
 async fn dead_code_handler(Json(req): Json<AnalysisRequest>) -> ApiResult<Value> {
-    let result = tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(
-            context_mode_tools::code_analysis::ctx_dead_code(json!({ "path": req.path })),
-        )
-    })
-    .map_err(api_error)?;
+    let result = context_mode_tools::code_analysis::ctx_dead_code(json!({ "path": req.path }))
+        .await
+        .map_err(api_error)?;
     Ok(Json(result))
 }
 
 async fn complexity_handler(Json(req): Json<AnalysisRequest>) -> ApiResult<Value> {
-    let result = tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(
-            context_mode_tools::code_analysis::ctx_complexity(json!({ "path": req.path })),
-        )
-    })
-    .map_err(api_error)?;
+    let result = context_mode_tools::code_analysis::ctx_complexity(json!({ "path": req.path }))
+        .await
+        .map_err(api_error)?;
     Ok(Json(result))
 }
 

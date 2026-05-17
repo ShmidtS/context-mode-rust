@@ -10,7 +10,7 @@ const IS_WIN = platform() === 'win32';
 const EXT = IS_WIN ? '.exe' : '';
 const BIN_NAME = `context-mode-server${EXT}`;
 const CLI_BIN_NAME = `context-mode${EXT}`;
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 const HOOK_TYPES = ['posttooluse', 'pretooluse', 'precompact', 'sessionstart', 'userpromptsubmit'];
 
 function log(...args) {
