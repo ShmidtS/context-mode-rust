@@ -390,5 +390,3 @@ pub fn index_vault(
 
     Ok(result)
 }
-
-

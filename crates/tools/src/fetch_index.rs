@@ -77,4 +77,3 @@ fn set_cached(url: String, content: String) {
         cache.insert(url, (content, now));
     }
 }
-

@@ -9,7 +9,9 @@ pub struct ContextModeServer;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxExecuteParams {
-    #[schemars(description = "Programming language for the code snippet (e.g., 'python', 'shell', 'javascript')")]
+    #[schemars(
+        description = "Programming language for the code snippet (e.g., 'python', 'shell', 'javascript')"
+    )]
     language: String,
     #[schemars(description = "Source code to execute in the sandbox")]
     code: String,
@@ -17,7 +19,9 @@ struct CtxExecuteParams {
     timeout: Option<u64>,
     #[schemars(description = "Run in background without waiting for completion")]
     background: Option<bool>,
-    #[schemars(description = "Natural-language intent describing what the code should produce, used for output summarization")]
+    #[schemars(
+        description = "Natural-language intent describing what the code should produce, used for output summarization"
+    )]
     intent: Option<String>,
 }
 
@@ -25,7 +29,9 @@ struct CtxExecuteParams {
 struct CtxExecuteFileParams {
     #[schemars(description = "Absolute path to the file to analyze")]
     path: String,
-    #[schemars(description = "Programming language for the analysis code (e.g., 'python', 'shell', 'javascript')")]
+    #[schemars(
+        description = "Programming language for the analysis code (e.g., 'python', 'shell', 'javascript')"
+    )]
     language: String,
     #[schemars(description = "Source code that reads FILE_CONTENT and produces output")]
     code: String,
@@ -77,7 +83,9 @@ struct CtxFetchAndIndexParams {
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxSearchParams {
-    #[schemars(description = "BM25 search queries (OR semantics — more matching terms rank higher)")]
+    #[schemars(
+        description = "BM25 search queries (OR semantics — more matching terms rank higher)"
+    )]
     queries: Vec<String>,
     #[schemars(description = "Maximum number of results to return")]
     limit: Option<usize>,
@@ -101,7 +109,9 @@ struct CtxVaultIndexParams {
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 struct CtxVaultGraphParams {
-    #[schemars(description = "Traversal mode: neighbors, backlinks, tag-cluster, surprises, confidence-filter")]
+    #[schemars(
+        description = "Traversal mode: neighbors, backlinks, tag-cluster, surprises, confidence-filter"
+    )]
     mode: String,
     #[schemars(description = "Starting vault note path for graph traversal")]
     node_path: Option<String>,
@@ -378,7 +388,9 @@ impl ContextModeServer {
         call_tool(|| context_mode_tools::code_analysis::ctx_dep_graph(value)).await
     }
 
-    #[tool(description = "Analyze vault graph: detect god nodes, surprising connections, communities, and suggest questions.")]
+    #[tool(
+        description = "Analyze vault graph: detect god nodes, surprising connections, communities, and suggest questions."
+    )]
     async fn ctx_graph_analyze(
         &self,
         Parameters(params): Parameters<CtxGraphAnalyzeParams>,
@@ -414,10 +426,7 @@ impl ContextModeServer {
     }
 
     #[tool(description = "Index a local source code repository for semantic and full-text search.")]
-    async fn ctx_local_index(
-        &self,
-        Parameters(params): Parameters<CtxLocalIndexParams>,
-    ) -> String {
+    async fn ctx_local_index(&self, Parameters(params): Parameters<CtxLocalIndexParams>) -> String {
         let value = params_to_value(params);
         call_tool(|| context_mode_tools::local_index::ctx_local_index(value)).await
     }
@@ -450,10 +459,7 @@ impl ContextModeServer {
     }
 
     #[tool(description = "Watch a local repository for changes and auto-reindex.")]
-    async fn ctx_local_watch(
-        &self,
-        Parameters(params): Parameters<CtxLocalWatchParams>,
-    ) -> String {
+    async fn ctx_local_watch(&self, Parameters(params): Parameters<CtxLocalWatchParams>) -> String {
         let value = params_to_value(params);
         call_tool(|| context_mode_tools::local_index::ctx_local_watch(value)).await
     }
@@ -509,5 +515,7 @@ async fn shutdown_signal() {
 
 #[cfg(not(unix))]
 async fn shutdown_signal() {
-    tokio::signal::ctrl_c().await.expect("failed to listen for ctrl+c event");
+    tokio::signal::ctrl_c()
+        .await
+        .expect("failed to listen for ctrl+c event");
 }

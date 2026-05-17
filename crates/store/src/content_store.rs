@@ -2,8 +2,7 @@ use crate::chunking::{chunk_markdown, chunk_plain_text, walk_json};
 use crate::reranking::apply_proximity_reranking;
 use crate::schema::{PREPARED_STATEMENTS, init_schema};
 use crate::search_helpers::{
-    SearchCoreParams, SearchStmts, sanitize_query, sanitize_trigram_query,
-    search_core,
+    SearchCoreParams, SearchStmts, sanitize_query, sanitize_trigram_query, search_core,
 };
 use crate::types::{
     AstChunk, Chunk, IndexOptions, IndexResult, MatchLayer, SearchMode, SearchResult,

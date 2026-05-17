@@ -1,7 +1,7 @@
 use context_mode_adapters::base::BaseAdapter;
 use context_mode_adapters::detect::get_session_dir_segments;
-use context_mode_adapters::platforms::*;
 use context_mode_adapters::platforms::claude_code::ClaudeCodeAdapter;
+use context_mode_adapters::platforms::*;
 use context_mode_adapters::types::{HookAdapter, PlatformId};
 
 #[test]

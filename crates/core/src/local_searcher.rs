@@ -22,7 +22,9 @@ impl LocalSearcher {
     /// Open a local search DB. If `db_path` is `None`, opens the default on-disk DB
     /// at `~/.context-mode/code-index.db`.
     pub fn open(db_path: Option<&Path>) -> anyhow::Result<Self> {
-        let path = db_path.map(|p| p.to_path_buf()).unwrap_or_else(default_db_path);
+        let path = db_path
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(default_db_path);
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
@@ -55,8 +57,17 @@ mod tests {
     fn test_local_searcher_basic() {
         let mut conn = Connection::open_in_memory().unwrap();
         db_schema::init_local_schema(&mut conn).unwrap();
-        db_schema::insert_chunk(&mut conn, "hello world", "main", "fn", "a.rs", "repo1", 1, 5)
-            .unwrap();
+        db_schema::insert_chunk(
+            &mut conn,
+            "hello world",
+            "main",
+            "fn",
+            "a.rs",
+            "repo1",
+            1,
+            5,
+        )
+        .unwrap();
 
         // Test via in-memory path by opening directly
         let searcher = LocalSearcher { conn };
@@ -69,8 +80,17 @@ mod tests {
     fn test_local_searcher_repo_filter() {
         let mut conn = Connection::open_in_memory().unwrap();
         db_schema::init_local_schema(&mut conn).unwrap();
-        db_schema::insert_chunk(&mut conn, "hello world", "main", "fn", "a.rs", "repo1", 1, 5)
-            .unwrap();
+        db_schema::insert_chunk(
+            &mut conn,
+            "hello world",
+            "main",
+            "fn",
+            "a.rs",
+            "repo1",
+            1,
+            5,
+        )
+        .unwrap();
         db_schema::insert_chunk(&mut conn, "hello moon", "main", "fn", "b.rs", "repo2", 1, 5)
             .unwrap();
 

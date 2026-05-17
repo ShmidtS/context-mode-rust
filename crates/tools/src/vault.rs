@@ -109,10 +109,22 @@ pub async fn ctx_vault_graph(params: Value) -> Result<Value> {
 pub async fn ctx_graph_analyze(params: Value) -> Result<Value> {
     let vault_path = vault_path_from_params(&params).unwrap_or_default();
     let opts = context_mode_vault::AnalyzeOpts {
-        god_node_limit: params.get("godNodeLimit").and_then(|v| v.as_u64()).map(|v| v as usize),
-        surprise_limit: params.get("surpriseLimit").and_then(|v| v.as_u64()).map(|v| v as usize),
-        community_limit: params.get("communityLimit").and_then(|v| v.as_u64()).map(|v| v as usize),
-        question_limit: params.get("questionLimit").and_then(|v| v.as_u64()).map(|v| v as usize),
+        god_node_limit: params
+            .get("godNodeLimit")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize),
+        surprise_limit: params
+            .get("surpriseLimit")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize),
+        community_limit: params
+            .get("communityLimit")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize),
+        question_limit: params
+            .get("questionLimit")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize),
     };
 
     let store = open_store(&vault_path)?;

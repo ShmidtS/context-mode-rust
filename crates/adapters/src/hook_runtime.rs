@@ -82,9 +82,7 @@ impl HookInstaller {
     }
 
     fn default() -> Result<Self, AdapterError> {
-        Ok(Self::new(
-            context_mode_utils::paths::home_or_current(),
-        ))
+        Ok(Self::new(context_mode_utils::paths::home_or_current()))
     }
 
     fn hook_path(&self, platform: &str, hook_type: &str) -> Result<PathBuf, AdapterError> {

@@ -73,16 +73,14 @@ pub fn start_watching(path: &Path, repo_id: &str) -> anyhow::Result<()> {
             if !drained.is_empty() {
                 let path = bg_path.clone();
                 let repo_id = bg_repo_id.clone();
-                tokio::task::spawn_blocking(move || {
-                    match LocalIndexer::open(None) {
-                        Ok(mut indexer) => {
-                            if let Err(e) = indexer.index_repository(&path, &repo_id, false) {
-                                tracing::warn!("reindex error for {}: {}", repo_id, e);
-                            }
+                tokio::task::spawn_blocking(move || match LocalIndexer::open(None) {
+                    Ok(mut indexer) => {
+                        if let Err(e) = indexer.index_repository(&path, &repo_id, false) {
+                            tracing::warn!("reindex error for {}: {}", repo_id, e);
                         }
-                        Err(e) => {
-                            tracing::warn!("open indexer for reindex {}: {}", repo_id, e);
-                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("open indexer for reindex {}: {}", repo_id, e);
                     }
                 })
                 .await
