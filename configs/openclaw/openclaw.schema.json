@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/context-mode/context-mode-rust/configs/openclaw/openclaw.schema.json",
+  "title": "OpenClaw config (context-mode template)",
+  "description": "Minimal JSON Schema for the context-mode OpenClaw plugin template. For the full OpenClaw schema after install, run: openclaw config schema > openclaw.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema URL or path for editor validation (ignored by OpenClaw at runtime)."
+    },
+    "plugins": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "entries": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "enabled": { "type": "boolean" }
+            }
+          }
+        },
+        "slots": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "contextEngine": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -123,9 +123,32 @@ fn build_shell_command(runtime: &Option<String>, file_path: &str) -> Vec<String>
         vec![rt.clone(), "/C".to_string(), file_path.to_string()]
     } else if is_pwsh {
         vec![rt.clone(), "-File".to_string(), file_path.to_string()]
+    } else if cfg!(windows) && is_posix_shell(Some(rt)) {
+        vec![
+            rt.clone(),
+            "-c".to_string(),
+            format!("source {}", shell_quote(file_path)),
+        ]
     } else {
         vec![rt.clone(), file_path.to_string()]
     }
+}
+
+pub fn is_posix_shell(shell_path: Option<&str>) -> bool {
+    let Some(shell_path) = shell_path else {
+        return false;
+    };
+    let name = Path::new(shell_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(shell_path);
+    Regex::new(r"(?i)^(bash|sh|zsh|dash)(\.exe)?$")
+        .expect("posix shell regex should compile")
+        .is_match(name)
+}
+
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
 }
 
 fn detect_command(cmd: &str) -> Option<String> {

@@ -1,34 +1,35 @@
 # context-mode — MANDATORY routing rules
 
-context-mode MCP tools available. Rules protect context window from flooding. One unrouted command dumps 56 KB into context.
+context-mode MCP tools available. Rules protect context window from flooding. One unrouted command dumps 56 KB into context. Pi enforces routing via hooks (`tool_call` blocks `curl`/`wget`) AND these instructions. Hooks = hard enforcement; rules = completeness for redirections hooks cannot catch.
 
 ## Think in Code — MANDATORY
 
 Analyze/count/filter/compare/search/parse/transform data: **write code** via `ctx_execute(language, code)`, `console.log()` only the answer. Do NOT read raw data into context. PROGRAM the analysis, not COMPUTE it. Use the smallest sandbox language that fits. Handle errors and empty values explicitly. One script replaces ten tool calls.
 
-## BLOCKED — do NOT attempt
+## BLOCKED — do NOT use
 
-### curl / wget — BLOCKED
-Intercepted and replaced with error. Do NOT retry.
+### curl / wget — FORBIDDEN (hook-enforced)
+Do NOT use `curl`/`wget` in `bash`. Pi hooks block these. Dumps raw HTTP into context.
 Use: `ctx_fetch_and_index(url, source)` or `ctx_execute(language: "python", code: "...")`
 
-### Inline HTTP — BLOCKED
-Inline HTTP calls (`fetch`, `requests.get`, `requests.post`, `http.get`, `http.request`) — intercepted. Do NOT retry.
+### Inline HTTP — FORBIDDEN
+No inline HTTP one-liners (`fetch`, `requests.get`, `http.get`). Bypasses sandbox.
 Use: `ctx_execute(language, code)` — only stdout enters context
 
-### WebFetch — BLOCKED
+### Direct web fetching — FORBIDDEN
+Raw HTML can exceed 100 KB.
 Use: `ctx_fetch_and_index(url, source)` then `ctx_search(queries)`
 
 ## REDIRECTED — use sandbox
 
-### Bash (>20 lines output)
-Bash ONLY for: `git`, `mkdir`, `rm`, `mv`, `cd`, `ls`, `cargo build`, `pip install`.
+### bash (>20 lines output)
+`bash` ONLY for: `git`, `mkdir`, `rm`, `mv`, `cd`, `ls`, `cargo build`, `pip install`.
 Otherwise: `ctx_batch_execute(commands, queries)` or `ctx_execute(language: "shell", code: "...")`
 
-### Read (for analysis)
-Reading to **Edit** → Read correct. Reading to **analyze/explore/summarize** → `ctx_execute_file(path, language, code)`.
+### read (for analysis)
+Reading to **edit** → `read` correct. Reading to **analyze/explore/summarize** → `ctx_execute_file(path, language, code)`.
 
-### Grep (large results)
+### grep / find (large results)
 Use `ctx_execute(language: "shell", code: "grep ...")` in sandbox.
 
 ## Tool selection
@@ -50,16 +51,12 @@ Use `ctx_execute(language: "shell", code: "grep ...")` in sandbox.
 
 For multi-URL fetches or multi-API calls, **always** include `concurrency: N` (1-8):
 
-- `ctx_batch_execute(commands: [{ label: "cmd1", command: "gh pr list" }, { label: "cmd2", command: "curl -s https://api.example.com/v1/status" }], queries: ["status"])` — gh, curl, dig, docker inspect, multi-region cloud queries
+- `ctx_batch_execute(commands: [3+ network commands], concurrency: 5)` — gh, curl, dig, docker inspect, multi-region cloud queries
 - `ctx_fetch_and_index(requests: [{url, source}, ...], concurrency: 5)` — multi-URL batch fetch
 
 **Use concurrency 4-8** for I/O-bound work (network calls, API queries). **Keep concurrency 1** for CPU-bound (cargo test, build, clippy) or commands sharing state (ports, lock files, same-repo writes).
 
 GitHub API rate-limit: cap at 4 for `gh` calls.
-
-## Subagent routing
-
-Routing block auto-injected into subagent prompts. Bash-type subagents upgraded to general-purpose. No manual instruction needed.
 
 ## Output
 
@@ -80,10 +77,11 @@ Session history is persistent and searchable. On resume, search BEFORE asking th
 | Need | Command |
 |------|---------|
 | What were we working on? | `ctx_search(queries: ["summary"], source: "compaction", sort: "timeline")` |
-| What was the first request? | `ctx_search(queries: ["prompt"], source: "user-prompt", sort: "timeline")` |
 | What did we decide? | `ctx_search(queries: ["decision"], source: "decision", sort: "timeline")` |
 | What NOT to repeat? | `ctx_search(queries: ["rejected"], source: "rejected-approach")` |
 | What constraints exist? | `ctx_search(queries: ["constraint"], source: "constraint")` |
+
+Note: user-prompt history not available.
 
 DO NOT ask "what were we working on?" — SEARCH FIRST.
 If search returns 0 results, proceed as a fresh session.

@@ -5,13 +5,16 @@ use std::sync::{Arc, Mutex};
 pub struct SessionStats {
     pub total_calls: i64,
     pub total_bytes: i64,
+    pub raw_bytes_captured: i64,
+    pub bytes_returned_to_model: i64,
+    pub bytes_avoided: i64,
 }
 
 static GLOBAL_STATS: Lazy<Arc<Mutex<SessionStats>>> =
     Lazy::new(|| Arc::new(Mutex::new(SessionStats::default())));
 
 pub fn track_response(tool: &str, result: &serde_json::Value) {
-    let mut stats = GLOBAL_STATS.lock().unwrap();
+    let mut stats = GLOBAL_STATS.lock().unwrap_or_else(|e| e.into_inner());
     stats.total_calls += 1;
     let text = result.to_string();
     stats.total_bytes += text.len() as i64;
@@ -23,16 +26,52 @@ pub fn track_response(tool: &str, result: &serde_json::Value) {
     );
 }
 
+pub fn record_token_savings(raw_bytes_captured: i64, bytes_returned_to_model: i64) {
+    let mut stats = GLOBAL_STATS.lock().unwrap_or_else(|e| e.into_inner());
+    let raw = raw_bytes_captured.max(0);
+    let returned = bytes_returned_to_model.max(0);
+    stats.raw_bytes_captured += raw;
+    stats.bytes_returned_to_model += returned;
+    stats.bytes_avoided += (raw - returned).max(0);
+}
+
 pub async fn persist_stats() -> anyhow::Result<()> {
-    let stats = GLOBAL_STATS.lock().unwrap().clone();
+    let stats = GLOBAL_STATS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
     tracing::info!("Persisting stats: {:?}", stats);
     Ok(())
 }
 
+#[cfg(test)]
+pub fn reset_stats_for_test() {
+    let mut stats = GLOBAL_STATS.lock().unwrap_or_else(|e| e.into_inner());
+    *stats = SessionStats::default();
+}
+
+#[cfg(test)]
+pub fn snapshot_stats_for_test() -> SessionStats {
+    GLOBAL_STATS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+}
+
 pub async fn ctx_stats() -> anyhow::Result<serde_json::Value> {
-    let stats = GLOBAL_STATS.lock().unwrap().clone();
+    let stats = GLOBAL_STATS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
     Ok(serde_json::json!({
-        "content": [{ "type": "text", "text": format!("Total calls: {}, Total bytes: {}", stats.total_calls, stats.total_bytes) }],
+        "content": [{ "type": "text", "text": format!(
+            "Total calls: {}, Total bytes: {}\nRaw bytes captured: {}\nBytes returned to model: {}\nBytes avoided: {}",
+            stats.total_calls,
+            stats.total_bytes,
+            stats.raw_bytes_captured,
+            stats.bytes_returned_to_model,
+            stats.bytes_avoided
+        ) }],
         "isError": false
     }))
 }
@@ -99,7 +138,7 @@ pub async fn ctx_purge() -> anyhow::Result<serde_json::Value> {
     if path.exists() {
         std::fs::remove_file(path)?;
     }
-    let mut stats = GLOBAL_STATS.lock().unwrap();
+    let mut stats = GLOBAL_STATS.lock().unwrap_or_else(|e| e.into_inner());
     *stats = SessionStats::default();
     Ok(serde_json::json!({
         "content": [{ "type": "text", "text": "Knowledge base purged." }],

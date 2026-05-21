@@ -233,7 +233,7 @@ fn summarize_stdout(stdout: &str, intent: Option<&str>) -> Result<String> {
         source: Some("execute-output".to_string()),
     })?;
 
-    if let Some(intent) = intent {
+    let summary = if let Some(intent) = intent {
         let results = store.search(intent, 5, None, SearchMode::Or, None, SourceMatchMode::Like)?;
         let snippets = results
             .iter()
@@ -246,17 +246,20 @@ fn summarize_stdout(stdout: &str, intent: Option<&str>) -> Result<String> {
                 )
             })
             .collect::<Vec<_>>();
-        return Ok(format!(
+        format!(
             "Output exceeded 5000 chars. Indexed {} chunks. Intent matches:\n{}",
             indexed.total_chunks,
             snippets.join("\n\n---\n")
-        ));
-    }
+        )
+    } else {
+        format!(
+            "Output exceeded 5000 chars. Indexed {} chunks from execute output. Use ctx_search to query it.",
+            indexed.total_chunks
+        )
+    };
 
-    Ok(format!(
-        "Output exceeded 5000 chars. Indexed {} chunks from execute output. Use ctx_search to query it.",
-        indexed.total_chunks
-    ))
+    crate::stats::record_token_savings(stdout.len() as i64, summary.len() as i64);
+    Ok(summary)
 }
 
 fn wrap_file_content(language: Language, file_content: &str, code: &str) -> Result<String> {
@@ -295,4 +298,41 @@ fn tool_response(text: String, is_error: bool) -> serde_json::Value {
         "content": [{ "type": "text", "text": text }],
         "isError": is_error,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn summarize_stdout_records_token_savings() {
+        crate::stats::reset_stats_for_test();
+        let text = summarize_stdout(&"x".repeat(5001), None).unwrap();
+
+        assert!(text.contains("Output exceeded 5000 chars"));
+        let stats = crate::stats::snapshot_stats_for_test();
+        assert_eq!(stats.raw_bytes_captured, 5001);
+        assert!(stats.bytes_returned_to_model > 0);
+        assert_eq!(
+            stats.bytes_avoided,
+            stats.raw_bytes_captured - stats.bytes_returned_to_model
+        );
+    }
+
+    #[tokio::test]
+    async fn ctx_execute_shell_runs_in_test() {
+        let result = ctx_execute(serde_json::json!({
+            "language": "shell",
+            "code": "echo hello from ctx_execute test",
+            "timeout": 5000,
+        }))
+        .await
+        .unwrap();
+        let text = result["content"][0]["text"].as_str().unwrap();
+        assert!(
+            text.contains("hello from ctx_execute test"),
+            "got: {}",
+            text
+        );
+    }
 }

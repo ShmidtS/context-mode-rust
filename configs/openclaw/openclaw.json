@@ -1,5 +1,5 @@
 {
-  "$schema": "https://openclaw.ai/config.json",
+  "$schema": "./openclaw.schema.json",
   "plugins": {
     "entries": {
       "context-mode-rust": {

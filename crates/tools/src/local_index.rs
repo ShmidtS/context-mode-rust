@@ -3,6 +3,7 @@ use context_mode_core::db_schema;
 use context_mode_core::local_indexer::LocalIndexer;
 use context_mode_core::local_searcher::LocalSearcher;
 use context_mode_core::watch_manager;
+use context_mode_store::invalidate;
 use serde_json::{Value, json};
 
 fn derive_repo_id(path: &str) -> String {
@@ -158,7 +159,9 @@ pub async fn ctx_local_watch(params: Value) -> Result<Value> {
         }));
     }
 
-    match watch_manager::start_watching(resolved, &repo_id) {
+    match watch_manager::start_watching_with_invalidator(resolved, &repo_id, |path| {
+        context_mode_store::invalidate_blocking(&path.to_string_lossy());
+    }) {
         Ok(()) => Ok(json!({
             "content": [{ "type": "text", "text": format!("Watching {} as \"{}\".", path, repo_id) }],
             "isError": false
@@ -174,6 +177,8 @@ pub async fn ctx_local_unwatch(params: Value) -> Result<Value> {
     let repo_id = params["repo_id"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("missing 'repo_id' parameter"))?;
+
+    invalidate(repo_id).await;
 
     match watch_manager::stop_watching(repo_id) {
         Ok(()) => Ok(json!({

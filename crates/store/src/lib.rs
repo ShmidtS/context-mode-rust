@@ -1,3 +1,4 @@
+pub mod cache;
 pub mod chunking;
 pub mod content_store;
 pub mod reranking;
@@ -6,6 +7,9 @@ pub mod search_helpers;
 pub mod types;
 pub mod vocabulary;
 
+pub use cache::{
+    AsyncIndexCache, DEFAULT_INDEX_CACHE_MAX_SIZE, get, invalidate, invalidate_blocking, put,
+};
 pub use chunking::{PlainTextChunk, chunk_markdown, chunk_plain_text, walk_json};
 pub use content_store::{
     ContentStore, StoreError, StoreResult, cleanup_stale_content_dbs, cleanup_stale_dbs,

@@ -1,16 +1,16 @@
-use crate::runtime::{Language, RuntimeMap, build_command, detect_runtimes};
+use crate::runtime::{Language, RuntimeMap, build_command, detect_runtimes, is_posix_shell};
 use crate::types::ExecResult;
 use anyhow::{Context, anyhow};
-use std::io::Write;
+use std::collections::HashMap;
+use std::path::Path;
 use std::process::Stdio;
-use std::sync::{
-    Arc,
-    atomic::{AtomicUsize, Ordering},
-};
-use tempfile::NamedTempFile;
-use tokio::io::{AsyncRead, AsyncReadExt};
+use std::time::SystemTime;
+use tokio::io::AsyncReadExt;
 use tokio::process::{Child, Command};
-use tokio::time::{Duration, sleep, timeout};
+use tokio::sync::mpsc;
+use tokio::time::Duration;
+
+const BACKGROUND_LOG_LIMIT_BYTES: u64 = 100 * 1024 * 1024;
 
 /// Options for executing code.
 pub struct ExecuteOptions {
@@ -20,6 +20,21 @@ pub struct ExecuteOptions {
     pub background: bool,
     pub project_root: String,
     pub hard_cap_bytes: usize,
+}
+
+impl ExecuteOptions {
+    pub fn sanitized_env() -> HashMap<String, String> {
+        Self::sanitize_env_vars(std::env::vars())
+    }
+
+    pub fn sanitize_env_vars<I>(vars: I) -> HashMap<String, String>
+    where
+        I: IntoIterator<Item = (String, String)>,
+    {
+        vars.into_iter()
+            .filter(|(key, _)| !is_stripped_env_var(key))
+            .collect()
+    }
 }
 
 pub struct PolyglotExecutor {
@@ -49,189 +64,302 @@ impl PolyglotExecutor {
             opts.hard_cap_bytes
         };
 
-        let mut temp_file = NamedTempFile::with_suffix(language_extension(opts.language))?;
-        temp_file.write_all(wrap_code(opts.language, &opts.code).as_bytes())?;
-        temp_file.flush()?;
-        let file_path = temp_file.path().to_string_lossy().to_string();
+        let tmp_dir = tempfile::tempdir()?;
+        let file_name = format!("script{}", language_extension(opts.language));
+        let file_path = tmp_dir.path().join(&file_name);
+        std::fs::write(&file_path, wrap_code(opts.language, &opts.code))?;
+        let file_path_str = file_path.to_string_lossy().to_string();
 
-        let command_parts = build_command(&self.runtimes, opts.language, &file_path);
+        let arg_path = command_file_path(opts.language, &self.runtimes, file_path_str);
+        let command_parts = build_command(&self.runtimes, opts.language, &arg_path);
         if command_parts.is_empty() {
             return Err(anyhow!("runtime for {:?} is not available", opts.language));
         }
 
-        let mut command = Command::new(&command_parts[0]);
+        if opts.background {
+            return self
+                .execute_background(command_parts, project_root, opts.timeout_ms, tmp_dir)
+                .await;
+        }
+
+        let command = build_process_command(
+            &command_parts,
+            project_root,
+            opts.language == Language::Shell,
+        );
+        execute_foreground(command, hard_cap_bytes, opts.timeout_ms).await
+    }
+
+    async fn execute_background(
+        &self,
+        command_parts: Vec<String>,
+        project_root: &str,
+        timeout_ms: Option<u64>,
+        tmp_dir: tempfile::TempDir,
+    ) -> anyhow::Result<ExecResult> {
+        let log_dir = Path::new(project_root)
+            .join(".ctx")
+            .join("logs")
+            .join("background");
+        tokio::fs::create_dir_all(&log_dir).await?;
+        cleanup_background_logs(&log_dir).await?;
+
+        let log_file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_dir.join("pending.out"))?;
+        let stderr_file = log_file.try_clone()?;
+        let mut command = build_process_command(&command_parts, project_root, false);
         command
-            .args(&command_parts[1..])
-            .current_dir(project_root)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .kill_on_drop(!opts.background);
+            .stdout(Stdio::from(log_file))
+            .stderr(Stdio::from(stderr_file));
 
         let mut child = command
             .spawn()
             .with_context(|| format!("failed to spawn {}", command_parts[0]))?;
-        let stdout = child.stdout.take().context("failed to capture stdout")?;
-        let stderr = child.stderr.take().context("failed to capture stderr")?;
-        let timeout_ms = opts.timeout_ms.unwrap_or(30_000);
+        let pid = child.id();
+        let log_path = pid.map(|pid| {
+            log_dir.join(format!("{pid}.out")).to_string_lossy().to_string()
+        });
+        if let Some(ref path) = log_path {
+            let _ = tokio::fs::rename(log_dir.join("pending.out"), path).await;
+        }
 
-        let execution = async {
-            let result = wait_with_output_cap(&mut child, stdout, stderr, hard_cap_bytes).await?;
-
-            Ok::<ExecResult, anyhow::Error>(ExecResult {
-                stdout: String::from_utf8_lossy(&result.stdout).to_string(),
-                stderr: String::from_utf8_lossy(&result.stderr).to_string(),
-                exit_code: result.exit_code,
-                timed_out: false,
-                backgrounded: false,
-            })
-        };
-
-        match timeout(Duration::from_millis(timeout_ms), execution).await {
-            Ok(result) => result,
-            Err(_) if opts.background => {
-                let _ = temp_file.keep();
-                Ok(ExecResult {
+        let _ = tmp_dir.keep();
+        if let Some(timeout_ms) = timeout_ms {
+            if tokio::time::timeout(Duration::from_millis(timeout_ms), child.wait())
+                .await
+                .is_err()
+            {
+                kill_child_tree(&mut child).await;
+                return Ok(ExecResult {
                     stdout: String::new(),
                     stderr: String::new(),
                     exit_code: 0,
                     timed_out: true,
                     backgrounded: true,
-                })
+                    pid,
+                    log_path: log_path.clone(),
+                });
             }
-            Err(_) => Err(anyhow!("execution timed out after {} ms", timeout_ms)),
         }
+
+        Ok(ExecResult {
+            stdout: String::new(),
+            stderr: String::new(),
+            exit_code: 0,
+            timed_out: false,
+            backgrounded: true,
+            pid,
+            log_path,
+        })
     }
 }
 
-struct ProcessOutput {
-    stdout: Vec<u8>,
-    stderr: Vec<u8>,
-    exit_code: i32,
-}
+async fn execute_foreground(
+    mut command: Command,
+    hard_cap_bytes: usize,
+    timeout_ms: Option<u64>,
+) -> anyhow::Result<ExecResult> {
+    command.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = command.spawn().context("failed to spawn process")?;
+    let stdout_pipe = child.stdout.take().context("failed to capture stdout")?;
+    let stderr_pipe = child.stderr.take().context("failed to capture stderr")?;
+    let (tx, mut rx) = mpsc::channel::<(bool, Vec<u8>)>(16);
 
-struct CappedOutput {
-    bytes: Vec<u8>,
-    capped: bool,
-}
+    let stdout_tx = tx.clone();
+    tokio::spawn(async move {
+        read_stream(stdout_pipe, true, stdout_tx).await;
+    });
+    tokio::spawn(async move {
+        read_stream(stderr_pipe, false, tx).await;
+    });
 
-async fn wait_with_output_cap<R1, R2>(
-    child: &mut Child,
-    stdout: R1,
-    stderr: R2,
-    cap: usize,
-) -> anyhow::Result<ProcessOutput>
-where
-    R1: AsyncRead + Send + Unpin + 'static,
-    R2: AsyncRead + Send + Unpin + 'static,
-{
-    let total_bytes = Arc::new(AtomicUsize::new(0));
-    let mut stdout_task = tokio::spawn(read_capped(stdout, cap, total_bytes.clone()));
-    let mut stderr_task = tokio::spawn(read_capped(stderr, cap, total_bytes));
-    let mut stdout_done = None;
-    let mut stderr_done = None;
-    let mut exit_code = None;
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let mut timeout_sleep =
+        timeout_ms.map(|ms| Box::pin(tokio::time::sleep(Duration::from_millis(ms))));
+    let mut status_code = None;
+    let mut timed_out = false;
 
-    loop {
-        tokio::select! {
-            status = child.wait(), if exit_code.is_none() => {
-                exit_code = Some(status?.code().unwrap_or(-1));
-            }
-            result = &mut stdout_task, if stdout_done.is_none() => {
-                let output = result??;
-                let capped = output.capped;
-                stdout_done = Some(output);
-                if capped {
-                    terminate_child(child).await;
-                    if exit_code.is_none() {
-                        exit_code = Some(child.wait().await?.code().unwrap_or(-1));
+    {
+        let child_wait = child.wait();
+        tokio::pin!(child_wait);
+        loop {
+            tokio::select! {
+                status = &mut child_wait, if status_code.is_none() => {
+                    status_code = Some(status?.code().unwrap_or(-1));
+                }
+                _ = async {
+                    if let Some(sleep) = timeout_sleep.as_mut() {
+                        sleep.await;
+                    }
+                }, if timeout_sleep.is_some() && status_code.is_none() => {
+                    timed_out = true;
+                    break;
+                }
+                Some((is_stdout, chunk)) = rx.recv() => {
+                    append_capped(&mut stdout, &mut stderr, is_stdout, &chunk, hard_cap_bytes);
+                    if stdout.len() + stderr.len() >= hard_cap_bytes {
+                        break;
                     }
                 }
-            }
-            result = &mut stderr_task, if stderr_done.is_none() => {
-                let output = result??;
-                let capped = output.capped;
-                stderr_done = Some(output);
-                if capped {
-                    terminate_child(child).await;
-                    if exit_code.is_none() {
-                        exit_code = Some(child.wait().await?.code().unwrap_or(-1));
-                    }
-                }
-            }
-            _ = sleep(Duration::from_millis(1)), if exit_code.is_some() && stdout_done.is_some() && stderr_done.is_some() => {
-                break;
+                else => break,
             }
         }
     }
 
-    let mut stdout = stdout_done.map(|output| output.bytes).unwrap_or_default();
-    let mut stderr = stderr_done.map(|output| output.bytes).unwrap_or_default();
-    let mut capped = false;
-    enforce_total_cap(&mut stdout, &mut stderr, cap, &mut capped);
+    if status_code.is_none() {
+        kill_child_tree(&mut child).await;
+        let _ = tokio::time::timeout(Duration::from_secs(2), child.wait()).await;
+    }
 
-    Ok(ProcessOutput {
-        stdout,
-        stderr,
-        exit_code: exit_code.unwrap_or(-1),
+    while let Ok((is_stdout, chunk)) = rx.try_recv() {
+        append_capped(&mut stdout, &mut stderr, is_stdout, &chunk, hard_cap_bytes);
+    }
+
+    Ok(ExecResult {
+        stdout: String::from_utf8_lossy(&stdout).to_string(),
+        stderr: String::from_utf8_lossy(&stderr).to_string(),
+        exit_code: status_code.unwrap_or(-1),
+        timed_out,
+        backgrounded: false,
+        pid: None,
+        log_path: None,
     })
 }
 
-async fn terminate_child(child: &mut Child) {
-    let _ = child.start_kill();
-}
-
-async fn read_capped<R>(
-    mut reader: R,
-    cap: usize,
-    total_bytes: Arc<AtomicUsize>,
-) -> anyhow::Result<CappedOutput>
+async fn read_stream<R>(mut reader: R, is_stdout: bool, tx: mpsc::Sender<(bool, Vec<u8>)>)
 where
-    R: AsyncRead + Unpin,
+    R: tokio::io::AsyncRead + Unpin,
 {
-    let mut bytes = Vec::new();
-    let mut buffer = [0_u8; 8192];
-    let mut capped = false;
-
+    let mut buf = [0_u8; 8192];
     loop {
-        let read = reader.read(&mut buffer).await?;
-        if read == 0 {
-            break;
-        }
-
-        let previous_total = total_bytes.fetch_add(read, Ordering::Relaxed);
-        if previous_total >= cap {
-            capped = true;
-            break;
-        }
-
-        let remaining_total = cap - previous_total;
-        let stream_remaining = cap.saturating_sub(bytes.len());
-        let keep = read.min(remaining_total).min(stream_remaining);
-        bytes.extend_from_slice(&buffer[..keep]);
-
-        if read > keep || previous_total + read >= cap {
-            capped = true;
-            break;
+        match reader.read(&mut buf).await {
+            Ok(0) | Err(_) => break,
+            Ok(n) => {
+                if tx.send((is_stdout, buf[..n].to_vec())).await.is_err() {
+                    break;
+                }
+            }
         }
     }
-
-    Ok(CappedOutput { bytes, capped })
 }
 
-fn enforce_total_cap(stdout: &mut Vec<u8>, stderr: &mut Vec<u8>, cap: usize, capped: &mut bool) {
-    let total = stdout.len() + stderr.len();
-    if total <= cap {
+fn append_capped(
+    stdout: &mut Vec<u8>,
+    stderr: &mut Vec<u8>,
+    is_stdout: bool,
+    chunk: &[u8],
+    cap: usize,
+) {
+    let used = stdout.len() + stderr.len();
+    if used >= cap {
         return;
     }
-
-    *capped = true;
-    if stdout.len() >= cap {
-        stdout.truncate(cap);
-        stderr.clear();
+    let available = cap - used;
+    let take = available.min(chunk.len());
+    if is_stdout {
+        stdout.extend_from_slice(&chunk[..take]);
     } else {
-        stderr.truncate(cap - stdout.len());
+        stderr.extend_from_slice(&chunk[..take]);
     }
 }
+
+fn build_process_command(command_parts: &[String], project_root: &str, shell: bool) -> Command {
+    let mut command = Command::new(&command_parts[0]);
+    command
+        .args(&command_parts[1..])
+        .current_dir(project_root)
+        .stdin(Stdio::null())
+        .env_clear()
+        .envs(ExecuteOptions::sanitized_env());
+    if shell {
+        command
+            .env("MSYS_NO_PATHCONV", "1")
+            .env("MSYS2_ARG_CONV_EXCL", "*");
+    }
+    hide_windows_console(&mut command);
+    command
+}
+
+fn command_file_path(language: Language, runtimes: &RuntimeMap, file_path: String) -> String {
+    if language == Language::Shell && is_posix_shell(runtimes.shell.as_deref()) {
+        file_path.replace('\\', "/")
+    } else {
+        file_path
+    }
+}
+
+fn is_stripped_env_var(key: &str) -> bool {
+    matches!(
+        key,
+        "BASH_ENV"
+            | "NODE_OPTIONS"
+            | "PYTHONSTARTUP"
+            | "LD_PRELOAD"
+            | "CC"
+            | "CXX"
+            | "CFLAGS"
+            | "LDFLAGS"
+            | "GIT_CONFIG_GLOBAL"
+            | "GIT_CONFIG_SYSTEM"
+    )
+}
+
+async fn cleanup_background_logs(log_dir: &Path) -> anyhow::Result<()> {
+    let mut entries = Vec::new();
+    let mut read_dir = tokio::fs::read_dir(log_dir).await?;
+    while let Some(entry) = read_dir.next_entry().await? {
+        let metadata = entry.metadata().await?;
+        if metadata.is_file() {
+            let modified = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+            entries.push((entry.path(), metadata.len(), modified));
+        }
+    }
+
+    let mut total: u64 = entries.iter().map(|(_, len, _)| *len).sum();
+    entries.sort_by_key(|(_, _, modified)| *modified);
+    for (path, len, _) in entries {
+        if total <= BACKGROUND_LOG_LIMIT_BYTES {
+            break;
+        }
+        if tokio::fs::remove_file(path).await.is_ok() {
+            total = total.saturating_sub(len);
+        }
+    }
+    Ok(())
+}
+
+async fn kill_child_tree(child: &mut Child) {
+    let pid = child.id();
+    let _ = child.kill().await;
+    kill_process_tree(pid).await;
+}
+
+#[cfg(windows)]
+async fn kill_process_tree(pid: Option<u32>) {
+    if let Some(pid) = pid {
+        let _ = Command::new("taskkill")
+            .args(["/T", "/F", "/PID", &pid.to_string()])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await;
+    }
+}
+
+#[cfg(not(windows))]
+async fn kill_process_tree(_pid: Option<u32>) {}
+
+#[cfg(windows)]
+fn hide_windows_console(command: &mut Command) {
+    command.creation_flags(0x08000000);
+}
+
+#[cfg(not(windows))]
+fn hide_windows_console(_command: &mut Command) {}
 
 fn wrap_code(language: Language, code: &str) -> String {
     match language {
@@ -252,6 +380,7 @@ fn language_extension(language: Language) -> &'static str {
         Language::JavaScript => ".js",
         Language::TypeScript => ".ts",
         Language::Python => ".py",
+        Language::Shell if cfg!(windows) => "",
         Language::Shell => ".sh",
         Language::Ruby => ".rb",
         Language::Go => ".go",

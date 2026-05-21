@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -15,8 +16,16 @@ static PENDING: LazyLock<Mutex<HashMap<String, Vec<PathBuf>>>> =
 
 /// Start watching a path for changes and auto-reindex on file events.
 pub fn start_watching(path: &Path, repo_id: &str) -> anyhow::Result<()> {
+    start_watching_with_invalidator(path, repo_id, |_| {})
+}
+
+pub fn start_watching_with_invalidator(
+    path: &Path,
+    repo_id: &str,
+    invalidate: impl Fn(&Path) + Send + Sync + 'static,
+) -> anyhow::Result<()> {
     {
-        let watchers = WATCHERS.lock().unwrap();
+        let watchers = WATCHERS.lock().unwrap_or_else(|e| e.into_inner());
         if watchers.contains_key(repo_id) {
             return Ok(());
         }
@@ -24,10 +33,11 @@ pub fn start_watching(path: &Path, repo_id: &str) -> anyhow::Result<()> {
 
     PENDING
         .lock()
-        .unwrap()
+        .unwrap_or_else(|e| e.into_inner())
         .insert(repo_id.to_string(), Vec::new());
 
     let repo_id_owned = repo_id.to_string();
+    let invalidate = Arc::new(invalidate);
     let mut watcher = RecommendedWatcher::new(
         move |res: Result<notify::Event, notify::Error>| match res {
             Ok(event) => {
@@ -35,6 +45,7 @@ pub fn start_watching(path: &Path, repo_id: &str) -> anyhow::Result<()> {
                     if crate::watcher::is_ignorable(&p) {
                         continue;
                     }
+                    invalidate(&p);
                     if let Ok(mut pending) = PENDING.lock() {
                         if let Some(vec) = pending.get_mut(&repo_id_owned) {
                             vec.push(p);
@@ -53,7 +64,7 @@ pub fn start_watching(path: &Path, repo_id: &str) -> anyhow::Result<()> {
 
     WATCHERS
         .lock()
-        .unwrap()
+        .unwrap_or_else(|e| e.into_inner())
         .insert(repo_id.to_string(), watcher);
 
     let bg_repo_id = repo_id.to_string();
@@ -62,13 +73,13 @@ pub fn start_watching(path: &Path, repo_id: &str) -> anyhow::Result<()> {
         loop {
             tokio::time::sleep(Duration::from_secs(1)).await;
             let drained = {
-                let mut pending = PENDING.lock().unwrap();
+                let mut pending = PENDING.lock().unwrap_or_else(|e| e.into_inner());
                 pending.remove(&bg_repo_id).unwrap_or_default()
             };
             // Re-insert empty vec so we keep the entry alive
             PENDING
                 .lock()
-                .unwrap()
+                .unwrap_or_else(|e| e.into_inner())
                 .insert(bg_repo_id.clone(), Vec::new());
             if !drained.is_empty() {
                 let path = bg_path.clone();
@@ -96,8 +107,8 @@ pub fn start_watching(path: &Path, repo_id: &str) -> anyhow::Result<()> {
 
 /// Stop watching a repo.
 pub fn stop_watching(repo_id: &str) -> anyhow::Result<()> {
-    WATCHERS.lock().unwrap().remove(repo_id);
-    PENDING.lock().unwrap().remove(repo_id);
+    WATCHERS.lock().unwrap_or_else(|e| e.into_inner()).remove(repo_id);
+    PENDING.lock().unwrap_or_else(|e| e.into_inner()).remove(repo_id);
     Ok(())
 }
 

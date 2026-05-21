@@ -112,6 +112,10 @@ pub struct ExecResult {
     pub timed_out: bool,
     #[serde(default)]
     pub backgrounded: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pid: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_path: Option<String>,
 }
 
 // ─────────────────────────────────────────────────────────
@@ -177,6 +181,17 @@ pub struct SearchResult {
 pub enum ContentType {
     Code,
     Prose,
+}
+
+/// Source content chunk with byte and line ranges.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Chunk {
+    pub source: String,
+    pub content: String,
+    pub start_line: usize,
+    pub end_line: usize,
+    pub byte_start: usize,
+    pub byte_end: usize,
 }
 
 /// AST-derived content chunk metadata.
@@ -311,6 +326,8 @@ mod tests {
             exit_code: 0,
             timed_out: false,
             backgrounded: false,
+            pid: None,
+            log_path: None,
         };
         let json = serde_json::to_string(&result).unwrap();
         assert!(json.contains("\"exit_code\":0"));

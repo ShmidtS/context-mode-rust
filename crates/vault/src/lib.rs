@@ -1,6 +1,7 @@
 pub mod analytics;
 pub mod ast_chunker;
 pub mod ast_parser;
+pub mod chunking;
 pub mod code_parser;
 pub mod config;
 pub mod graph_store;

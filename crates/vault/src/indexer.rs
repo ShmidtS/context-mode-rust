@@ -284,7 +284,12 @@ pub fn index_vault(
                 .as_ref()
                 .is_some_and(|n| n.content_hash == content_hash)
         {
-            let mut node = existing.unwrap();
+            // Invariant: matching content_hash was checked through existing.as_ref().is_some_and above.
+            let mut node = existing.unwrap_or_else(|| {
+                panic!(
+                    "invariant: existing node must exist because matching content_hash was checked"
+                )
+            });
             node.mtime_ms = mtime;
             store.upsert_node_input(&node)?;
             result.skipped += 1;
