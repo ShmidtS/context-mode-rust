@@ -107,8 +107,14 @@ pub fn start_watching_with_invalidator(
 
 /// Stop watching a repo.
 pub fn stop_watching(repo_id: &str) -> anyhow::Result<()> {
-    WATCHERS.lock().unwrap_or_else(|e| e.into_inner()).remove(repo_id);
-    PENDING.lock().unwrap_or_else(|e| e.into_inner()).remove(repo_id);
+    WATCHERS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(repo_id);
+    PENDING
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(repo_id);
     Ok(())
 }
 

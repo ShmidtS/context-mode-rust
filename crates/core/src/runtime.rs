@@ -162,7 +162,15 @@ fn detect_command(cmd: &str) -> Option<String> {
             String::from_utf8_lossy(&output.stdout)
                 .lines()
                 .map(str::trim)
-                .find(|line| !line.is_empty())
+                .filter(|line| !line.is_empty())
+                .filter(|line| {
+                    if cfg!(windows) {
+                        !line.to_ascii_lowercase().contains(r"\windowsapps\")
+                    } else {
+                        true
+                    }
+                })
+                .find(|_| true)
                 .map(str::to_string)
         })
     {
@@ -172,6 +180,13 @@ fn detect_command(cmd: &str) -> Option<String> {
     which::which(cmd)
         .ok()
         .map(|path| path.to_string_lossy().to_string())
+        .filter(|path| {
+            if cfg!(windows) {
+                !path.to_ascii_lowercase().contains(r"\windowsapps\")
+            } else {
+                true
+            }
+        })
 }
 
 fn detect_bun() -> Option<String> {
@@ -262,4 +277,22 @@ fn detect_windows_bash() -> Option<String> {
                 })
                 .map(str::to_string)
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(windows)]
+    fn test_detect_command_filters_windowsapps() {
+        if let Some(path) = detect_command("python3") {
+            let lower = path.to_ascii_lowercase();
+            assert!(
+                !lower.contains(r"\windowsapps\"),
+                "should not detect WindowsApps stub: {}",
+                path
+            );
+        }
+    }
 }

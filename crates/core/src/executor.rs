@@ -119,7 +119,10 @@ impl PolyglotExecutor {
             .with_context(|| format!("failed to spawn {}", command_parts[0]))?;
         let pid = child.id();
         let log_path = pid.map(|pid| {
-            log_dir.join(format!("{pid}.out")).to_string_lossy().to_string()
+            log_dir
+                .join(format!("{pid}.out"))
+                .to_string_lossy()
+                .to_string()
         });
         if let Some(ref path) = log_path {
             let _ = tokio::fs::rename(log_dir.join("pending.out"), path).await;
