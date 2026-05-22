@@ -62,7 +62,9 @@ fn open_db(path: &PathBuf) -> anyhow::Result<Connection> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .init();
     let args = Args::parse();
 
     match args.command {
@@ -96,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
             platform,
             hook_type,
         }) => {
-            hook::run(&platform, &hook_type).await?;
+            hook::run(&platform, &hook_type).await;
         }
         None => {
             error!("No command provided. Use --help for usage.");

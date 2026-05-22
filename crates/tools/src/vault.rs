@@ -133,6 +133,87 @@ pub async fn ctx_vault_graph(params: Value) -> Result<Value> {
             let tag = tag.ok_or_else(|| anyhow!("tag is required for tag-cluster mode"))?;
             search.tag_cluster(tag)?
         }
+        "surprises" => {
+            let limit = params
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(10) as usize;
+            let analysis = context_mode_vault::analyze_graph(&store, None)?;
+            let formatted = analysis
+                .surprising_connections
+                .iter()
+                .take(limit)
+                .map(|conn| {
+                    let explanation = conn
+                        .explanation
+                        .as_deref()
+                        .unwrap_or("(no explanation)");
+                    format!(
+                        "- {} → {} (type={}, score={:.2})\n  {}\n  Tags: {:?} ↔ {:?}",
+                        conn.source_path,
+                        conn.target_path,
+                        conn.edge_type,
+                        conn.unexpectedness,
+                        explanation,
+                        conn.source_tags,
+                        conn.target_tags
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            return Ok(text_response(if formatted.is_empty() {
+                "No surprising connections found.".to_string()
+            } else {
+                format!("Found {} surprising connections:\n{}", analysis.surprising_connections.len().min(limit), formatted)
+            }));
+        }
+        "confidence-filter" => {
+            use context_mode_vault::VaultConfidence;
+            let min_confidence = params
+                .get("minConfidence")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.5);
+            let score_for = |c: &VaultConfidence| -> f64 {
+                match c {
+                    VaultConfidence::EXTRACTED => 0.9,
+                    VaultConfidence::INFERRED => 0.5,
+                    VaultConfidence::AMBIGUOUS => 0.2,
+                }
+            };
+            let all_edges = store.get_all_edges()?;
+            let filtered: Vec<_> = all_edges
+                .iter()
+                .filter(|e| score_for(&e.confidence) >= min_confidence)
+                .collect();
+            let formatted = filtered
+                .iter()
+                .take(50)
+                .map(|edge| {
+                    let source = store.get_node_by_id(edge.source_id).ok().flatten();
+                    let target = edge
+                        .target_id
+                        .and_then(|id| store.get_node_by_id(id).ok().flatten());
+                    format!(
+                        "- {} → {} (type={}, confidence={})",
+                        source.as_ref().map(|n| n.title.as_str()).unwrap_or("?"),
+                        target.as_ref().map(|n| n.title.as_str()).unwrap_or("?"),
+                        edge.edge_type,
+                        edge.confidence,
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            return Ok(text_response(if formatted.is_empty() {
+                format!("No edges found with confidence >= {min_confidence}.")
+            } else {
+                format!(
+                    "Found {} edges with confidence >= {}:\n{}",
+                    filtered.len().min(50),
+                    min_confidence,
+                    formatted
+                )
+            }));
+        }
         other => return Err(anyhow!("unsupported vault graph mode: {other}")),
     };
 
