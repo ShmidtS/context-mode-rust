@@ -42,8 +42,8 @@ Hooks are registered in `~/.codex/hooks.json`. The matcher uses pipe-separated t
 {
   "PreToolUse": [
     {
-      "matcher": "local_shell|shell|shell_command|exec_command|container.exec|Bash|Shell|grep_files|mcp__plugin_context-mode_context-mode__ctx_execute",
-      "hooks": [{ "type": "command", "command": "node {pluginRoot}/hooks/pretooluse.mjs" }]
+      "matcher": "local_shell|shell|shell_command|exec_command|container.exec|Bash|Shell|grep_files|mcp__plugin_context-mode-rust_context-mode__ctx_execute",
+      "hooks": [{ "type": "command", "command": "context-mode hook codex pretooluse" }]
     }
   ]
 }
@@ -90,12 +90,12 @@ Resolved from: `input.cwd` > `CODEX_PROJECT_DIR` env > `process.cwd()`
 
 ## Hook Scripts
 
-Located in `{pluginRoot}/hooks/codex/`:
-- `pretooluse.mjs` -- Codex-specific PreToolUse handler
-- `posttooluse.mjs` -- Codex-specific PostToolUse handler
-- `sessionstart.mjs` -- Codex-specific SessionStart handler
-- `userpromptsubmit.mjs` -- User prompt processing
-- `stop.mjs` -- Session end handler
+Hook commands dispatched via the Rust CLI (`context-mode hook codex <event>`):
+- `pretooluse` -- Codex-specific PreToolUse handler
+- `posttooluse` -- Codex-specific PostToolUse handler
+- `sessionstart` -- Codex-specific SessionStart handler
+- `userpromptsubmit` -- User prompt processing
+- `stop` -- Session end handler
 
 ## Limitations
 

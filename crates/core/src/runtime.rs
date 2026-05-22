@@ -281,11 +281,10 @@ fn detect_windows_bash() -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     #[cfg(windows)]
     fn test_detect_command_filters_windowsapps() {
+        use super::*;
         if let Some(path) = detect_command("python3") {
             let lower = path.to_ascii_lowercase();
             assert!(

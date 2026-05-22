@@ -60,11 +60,7 @@ About to run a command / read a file / call an API?
 |       browser_navigate returns a snapshot automatically -- ignore it,
 |         use browser_snapshot(filename) for any inspection.
 |       Playwright MCP uses a SINGLE browser instance -- NOT parallel-safe.
-|         For parallel browser ops, use agent-browser via ctx_execute instead.
-|
-|-- Using agent-browser (parallel-safe browser automation)?
-|   -- Run via ctx_execute (shell) -- each call gets its own subprocess:
-|       ctx_execute({ language: "shell", code: "agent-browser open example.com && agent-browser snapshot -i -c" })
+|         For parallel browser ops, spawn multiple agents each using Playwright independently.
 |
 |-- Exploring relationships between markdown notes, wiki-links, tags, or code dependencies?
 |   -- Use ctx_vault_graph (neighbors, backlinks, tag-cluster, surprises, confidence-filter)
@@ -102,10 +98,10 @@ About to run a command / read a file / call an API?
 | Playwright console/network | `browser_*(filename)` -> `ctx_execute_file(path)` | Save to file, analyze in sandbox |
 | MCP output (already in context) | Use directly | Don't re-index -- it's already loaded |
 | MCP output (need multi-query) | `ctx_execute` to save -> `ctx_index(path)` -> `ctx_search` | Save to file first, index server-side |
-| Wipe indexed KB content | `ctx_purge(confirm: true)` | Permanently deletes all indexed content |
-| Explore note relationships / wiki-links | `ctx_vault_graph` | `ctx_vault_graph({mode:"neighbors", nodePath:"...", maxHops:2})` |
-| Analyze knowledge graph structure | `ctx_graph_analyze` | `ctx_graph_analyze({godNodeLimit:10, surpriseLimit:10})` — returns god nodes, communities, surprising links with plain-English explanations, suggested questions, markdown report, and approximate token-reduction estimate. |
-| Index external vault manually | `ctx_vault_index` | `ctx_vault_index({vaultPath:"/abs/path"})` — only for non-project vaults |
+| Wipe indexed KB content | `ctx_purge` | Permanently deletes all indexed content (no params) |
+| Explore note relationships / wiki-links | `ctx_vault_graph` | `ctx_vault_graph({mode:"neighbors", node_path:"...", max_hops:2})` |
+| Analyze knowledge graph structure | `ctx_graph_analyze` | `ctx_graph_analyze({path:"/abs/path", god_node_limit:10, surprise_limit:10})` — returns god nodes, communities, surprising links with plain-English explanations, suggested questions, markdown report, and approximate token-reduction estimate. |
+| Index external vault manually | `ctx_vault_index` | `ctx_vault_index({path:"/abs/path"})` — only for non-project vaults |
 
 ## Automatic Triggers
 

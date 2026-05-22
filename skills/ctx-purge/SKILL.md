@@ -9,15 +9,14 @@ user-invocable: true
 
 # Context Mode Purge
 
-Permanently deletes ALL session data: FTS5 knowledge base, session events, analytics, stats. Irreversible.
+Permanently deletes the FTS5 knowledge base and resets in-memory session stats. Irreversible.
 
 ## Instructions
 
 1. **Warn the user**: This is irreversible. Deleted items:
    - FTS5 knowledge base (all indexed content)
-   - Session events DB and markdown file
    - In-memory session stats
-2. Call `ctx_purge` with `confirm: true`.
+2. Call `ctx_purge` (no params required).
 3. Report the result — the response lists what was deleted.
 
 ## Notes

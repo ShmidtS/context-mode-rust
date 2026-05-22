@@ -43,7 +43,7 @@ Hooks are registered in `settings.json` under the `hooks` key. Each hook entry h
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|WebFetch|Read|Grep|Task|mcp__plugin_context-mode_context-mode__ctx_execute",
+        "matcher": "Bash|WebFetch|Read|Grep|Agent|mcp__plugin_context-mode-rust_context-mode__ctx_execute",
         "hooks": [{ "type": "command", "command": "context-mode hook claude-code pretooluse" }]
       }
     ],
@@ -90,10 +90,10 @@ Resolved from `CLAUDE_PROJECT_DIR` environment variable.
 ## PreToolUse Matchers
 
 The PreToolUse hook matches on these tool names:
-- `Bash`, `WebFetch`, `Read`, `Grep`, `Task`
-- `mcp__plugin_context-mode_context-mode__ctx_execute`
-- `mcp__plugin_context-mode_context-mode__ctx_execute_file`
-- `mcp__plugin_context-mode_context-mode__ctx_batch_execute`
+- `Bash`, `WebFetch`, `Read`, `Grep`, `Agent`
+- `mcp__plugin_context-mode-rust_context-mode__ctx_execute`
+- `mcp__plugin_context-mode-rust_context-mode__ctx_execute_file`
+- `mcp__plugin_context-mode-rust_context-mode__ctx_batch_execute`
 
 ## Subagent Routing
 

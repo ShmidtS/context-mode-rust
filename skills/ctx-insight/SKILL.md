@@ -15,7 +15,6 @@ Open the personal analytics dashboard in the browser.
 
 ## Instructions
 
-1. Call `ctx_insight`. Optional params: `port` (default 4747), `sessionDir`/`insightSessionDir`, `contentDir`/`insightContentDir`.
-2. First run installs dependencies (~30s); subsequent runs open instantly.
-3. Display the tool's output verbatim — it contains the dashboard URL.
-4. Tell the user: dashboard URL (default http://localhost:4747), refresh for updated metrics, stops when Claude exits (kill PID to stop sooner).
+1. Call `ctx_insight` (no params).
+2. Display the tool's output verbatim — it contains the dashboard URL (default http://127.0.0.1:3030).
+3. If status is "not running", tell the user to run the insight server binary manually: `context-mode-server --insight`.

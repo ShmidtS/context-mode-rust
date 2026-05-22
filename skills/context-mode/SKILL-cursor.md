@@ -59,9 +59,9 @@ Hooks use native Cursor format with `type: "command"` entries and `loop_limit`/`
         "failClosed": false
       }
     ],
-    "sessionStart": [...],
-    "stop": [...],
-    "afterAgentResponse": [...]
+    "sessionStart": [{ "type": "command", "command": "context-mode hook sessionStart", "matcher": "" }],
+    "stop": [{ "type": "command", "command": "context-mode hook stop", "matcher": "" }],
+    "afterAgentResponse": [{ "type": "command", "command": "context-mode hook afterAgentResponse", "matcher": "" }]
   }
 }
 ```
@@ -129,12 +129,12 @@ Resolved from: `input.cwd` > `input.workspace_roots[0]` > `CURSOR_CWD` env > `pr
 
 ## Hook Scripts
 
-Located in `{pluginRoot}/hooks/cursor/`:
-- `pretooluse.mjs` -- Cursor-specific PreToolUse handler
-- `posttooluse.mjs` -- Cursor-specific PostToolUse handler
-- `sessionstart.mjs` -- Cursor-specific SessionStart handler
-- `stop.mjs` -- Session end with optional followup message
-- `afteragentresponse.mjs` -- Agent response processing
+Hook commands dispatched via the Rust CLI (`context-mode hook cursor <event>`):
+- `preToolUse` -- Cursor-specific PreToolUse handler
+- `postToolUse` -- Cursor-specific PostToolUse handler
+- `sessionStart` -- Cursor-specific SessionStart handler
+- `stop` -- Session end with optional followup message
+- `afterAgentResponse` -- Agent response processing
 
 ## Enterprise Hook Config
 

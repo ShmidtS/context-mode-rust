@@ -17,6 +17,6 @@ Run diagnostics and display results directly in the conversation.
 2. Display the results verbatim — they are already formatted with plain-text status prefixes: `[OK]` PASS, `[FAIL]` FAIL, `[WARN]` WARN. Renderer-safe (no markdown task-list syntax) for cross-client compatibility (e.g., Z.ai GLM).
 3. **Fallback** (only if MCP tool call fails): Derive the **plugin root** from this skill's base directory (go up 2 levels — remove `/skills/ctx-doctor`), then run with Bash:
    ```
-   CLI="<PLUGIN_ROOT>/cli.bundle.mjs"; [ ! -f "$CLI" ] && CLI="<PLUGIN_ROOT>/build/cli.js"; node "$CLI" doctor
+   "<PLUGIN_ROOT>/.claude-plugin/bin/context-mode" doctor
    ```
-   Re-display results verbatim with the same `[OK]`/`[FAIL]`/`[WARN]` prefixes.
+   On Windows use `context-mode.exe`. Re-display results verbatim with the same `[OK]`/`[FAIL]`/`[WARN]` prefixes.

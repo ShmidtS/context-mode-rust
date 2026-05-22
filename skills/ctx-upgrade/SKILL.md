@@ -13,8 +13,12 @@ Pull latest from GitHub and reinstall the plugin.
 
 ## Instructions
 
-1. Call the `ctx_upgrade` MCP tool directly. It returns a shell command to execute.
-2. Run the returned command.
+1. Call the `ctx_upgrade` MCP tool directly. It returns the current server version.
+2. To perform a full upgrade (pull latest, rebuild, reinstall), run with Bash:
+   ```
+   cd <PLUGIN_ROOT> && git pull && cargo build --release && cargo install --path crates/mcp
+   ```
+   Replace `<PLUGIN_ROOT>` with the plugin root directory.
 3. Display results as a markdown checklist:
    ```
    ## context-mode upgrade
@@ -27,5 +31,5 @@ Pull latest from GitHub and reinstall the plugin.
 4. Tell the user to **restart their session** to pick up the new version.
 5. **Fallback** (only if MCP tool call fails): Derive the **plugin root** from this skill's base directory (go up 2 levels — remove `/skills/ctx-upgrade`), then run with Bash:
    ```
-   CLI="<PLUGIN_ROOT>/cli.bundle.mjs"; [ ! -f "$CLI" ] && CLI="<PLUGIN_ROOT>/build/cli.js"; node "$CLI" upgrade
+   cd "<PLUGIN_ROOT>" && git pull && cargo build --release && cargo install --path crates/mcp
    ```

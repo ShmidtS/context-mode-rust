@@ -44,13 +44,13 @@ Hooks are registered in `~/.gemini/settings.json` under the `hooks` key:
     "BeforeTool": [
       {
         "matcher": "Bash|Read|WebFetch|Grep",
-        "hooks": [{ "type": "command", "command": "node {pluginRoot}/hooks/gemini-cli/beforetool.mjs" }]
+        "hooks": [{ "type": "command", "command": "context-mode hook gemini beforetool" }]
       }
     ],
     "AfterTool": [
       {
         "matcher": "",
-        "hooks": [{ "type": "command", "command": "node {pluginRoot}/hooks/gemini-cli/aftertool.mjs" }]
+        "hooks": [{ "type": "command", "command": "context-mode hook gemini aftertool" }]
       }
     ]
   }
@@ -97,11 +97,11 @@ Resolved from: `GEMINI_PROJECT_DIR` env (also supports `CLAUDE_PROJECT_DIR` as a
 
 ## Hook Scripts
 
-Located in `{pluginRoot}/hooks/gemini-cli/`:
-- `beforetool.mjs` -- Gemini-specific BeforeTool handler
-- `aftertool.mjs` -- Gemini-specific AfterTool handler
-- `precompress.mjs` -- Advisory PreCompress handler
-- `sessionstart.mjs` -- Gemini-specific SessionStart handler
+Hook commands dispatched via the Rust CLI (`context-mode hook gemini <event>`):
+- `beforetool` -- Gemini-specific BeforeTool handler
+- `aftertool` -- Gemini-specific AfterTool handler
+- `precompress` -- Advisory PreCompress handler
+- `sessionstart` -- Gemini-specific SessionStart handler
 
 ## Limitations
 

@@ -65,11 +65,11 @@ Resolved from: `CLAUDE_PROJECT_DIR` env (shared with Claude Code compatibility)
 
 ## Hook Scripts
 
-Located in `{pluginRoot}/hooks/vscode-copilot/`:
-- `pretooluse.mjs` -- VS Code-specific PreToolUse handler
-- `posttooluse.mjs` -- VS Code-specific PostToolUse handler
-- `precompact.mjs` -- VS Code-specific PreCompact handler
-- `sessionstart.mjs` -- VS Code-specific SessionStart handler
+Hook commands dispatched via the Rust CLI (`context-mode hook copilot <event>`):
+- `pretooluse` -- VS Code-specific PreToolUse handler
+- `posttooluse` -- VS Code-specific PostToolUse handler
+- `precompact` -- VS Code-specific PreCompact handler
+- `sessionstart` -- VS Code-specific SessionStart handler
 
 ## Wire Protocol
 
