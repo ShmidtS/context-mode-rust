@@ -182,8 +182,9 @@ async fn execute_foreground(
     let mut stderr = Vec::new();
     // Default timeout: 30 seconds if not specified
     let effective_timeout = timeout_ms.unwrap_or(30_000);
-    let mut timeout_sleep =
-        Some(Box::pin(tokio::time::sleep(Duration::from_millis(effective_timeout))));
+    let mut timeout_sleep = Some(Box::pin(tokio::time::sleep(Duration::from_millis(
+        effective_timeout,
+    ))));
     let mut status_code = None;
     let mut timed_out = false;
 
