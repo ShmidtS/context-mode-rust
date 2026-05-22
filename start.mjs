@@ -11,7 +11,7 @@ const EXT = IS_WIN ? '.exe' : '';
 const BIN_NAME = `context-mode-server${EXT}`;
 const CLI_BIN_NAME = `context-mode${EXT}`;
 const INSIGHT_BIN_NAME = `context-mode-insight${EXT}`;
-const VERSION = '1.2.7';
+const VERSION = '1.2.8';
 const HOOK_TYPES = ['posttooluse', 'pretooluse', 'precompact', 'sessionstart', 'userpromptsubmit'];
 
 function log(...args) {
