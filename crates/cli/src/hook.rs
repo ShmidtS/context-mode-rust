@@ -3,9 +3,6 @@ use serde_json::Value;
 use std::io::{self, Read};
 use std::path::PathBuf;
 
-use context_mode_adapters::types::{
-    PostToolUseResponse, PreCompactResponse, PreToolUseDecision, PreToolUseResponse,
-};
 use context_mode_session::{
     db::SessionDB,
     extract::{extract_events, extract_user_events},
@@ -50,22 +47,14 @@ async fn handle_post_tool_use(db: &SessionDB, input: &str) -> Result<()> {
         }
     }
 
-    let response = PostToolUseResponse {
-        additional_context: None,
-        updated_output: None,
-    };
-    println!("{}", serde_json::to_string(&response)?);
+    // PostToolUse: {} is valid, no action needed
+    println!("{{}}");
     Ok(())
 }
 
 async fn handle_pre_tool_use(_input: &str) -> Result<()> {
-    let response = PreToolUseResponse {
-        decision: PreToolUseDecision::Allow,
-        reason: None,
-        updated_input: None,
-        additional_context: None,
-    };
-    println!("{}", serde_json::to_string(&response)?);
+    // PreToolUse: {} is valid, normal permission flow continues
+    println!("{{}}");
     Ok(())
 }
 
@@ -85,8 +74,8 @@ async fn handle_pre_compact(db: &SessionDB, input: &str) -> Result<()> {
         db.increment_compact_count(session_id)?;
     }
 
-    let response = PreCompactResponse { context: None };
-    println!("{}", serde_json::to_string(&response)?);
+    // PreCompact: {} is valid, compaction proceeds normally
+    println!("{{}}");
     Ok(())
 }
 

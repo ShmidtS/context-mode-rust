@@ -495,6 +495,17 @@ impl VaultGraphStore {
             .map_err(Into::into)
     }
 
+    pub fn find_node_by_path_like(&self, pattern: &str) -> Result<Option<VaultNode>> {
+        self.conn
+            .query_row(
+                "SELECT * FROM vault_nodes WHERE note_path LIKE ?1 LIMIT 1",
+                params![pattern],
+                map_node,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
     pub fn recalc_degrees(&self, node_id: i64) -> Result<()> {
         self.conn.execute("UPDATE vault_nodes SET out_degree = (SELECT COUNT(*) FROM vault_edges WHERE source_id = ?1) WHERE id = ?1", params![node_id])?;
         self.conn.execute("UPDATE vault_nodes SET in_degree = (SELECT COUNT(*) FROM vault_edges WHERE target_id = ?1) WHERE id = ?1", params![node_id])?;

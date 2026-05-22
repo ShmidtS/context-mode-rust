@@ -45,6 +45,43 @@ fn format_graph_results(results: &[context_mode_vault::GraphSearchResult]) -> St
         .join("\n")
 }
 
+/// Try to find a node by matching the given path against stored relative note paths.
+/// Users often pass absolute paths, but the DB stores paths relative to vault_path.
+fn resolve_node(
+    store: &context_mode_vault::VaultGraphStore,
+    vault_path: &str,
+    node_path: &str,
+) -> Option<context_mode_vault::VaultNode> {
+    // Exact match on stored relative path
+    if let Some(node) = store.get_node_by_note_path(node_path).ok().flatten() {
+        return Some(node);
+    }
+    // Title match
+    if let Some(node) = store.get_node_by_title(node_path).ok().flatten() {
+        return Some(node);
+    }
+    // Strip vault_path prefix to get relative path
+    if !vault_path.is_empty() {
+        let normalized_input = node_path.replace('\\', "/");
+        let normalized_vault = vault_path.replace('\\', "/");
+        let normalized_vault = normalized_vault.trim_end_matches('/');
+        if let Some(relative) = normalized_input.strip_prefix(normalized_vault) {
+            let relative = relative.trim_start_matches('/');
+            if let Some(node) = store.get_node_by_note_path(relative).ok().flatten() {
+                return Some(node);
+            }
+        }
+    }
+    // LIKE match on the basename (last path segment) — handles absolute paths
+    let normalized = node_path.replace('\\', "/");
+    let basename = normalized.rsplit('/').next().unwrap_or(&normalized);
+    let pattern = format!("%{basename}");
+    if let Some(node) = store.find_node_by_path_like(&pattern).ok().flatten() {
+        return Some(node);
+    }
+    None
+}
+
 pub async fn ctx_vault_index(params: Value) -> Result<Value> {
     let path = vault_path_from_params(&params).ok_or_else(|| anyhow!("missing vault path"))?;
     let store = open_store(&path)?;
@@ -81,18 +118,14 @@ pub async fn ctx_vault_graph(params: Value) -> Result<Value> {
         "neighbors" => {
             let node_path =
                 node_path.ok_or_else(|| anyhow!("nodePath is required for neighbors mode"))?;
-            let node = store
-                .get_node_by_note_path(node_path)?
-                .or_else(|| store.get_node_by_title(node_path).ok().flatten())
+            let node = resolve_node(&store, &vault_path, node_path)
                 .ok_or_else(|| anyhow!("node not found: {node_path}"))?;
             search.neighbors(node.id, max_hops, edge_type)?
         }
         "backlinks" => {
             let node_path =
                 node_path.ok_or_else(|| anyhow!("nodePath is required for backlinks mode"))?;
-            let node = store
-                .get_node_by_note_path(node_path)?
-                .or_else(|| store.get_node_by_title(node_path).ok().flatten())
+            let node = resolve_node(&store, &vault_path, node_path)
                 .ok_or_else(|| anyhow!("node not found: {node_path}"))?;
             search.backlinks(node.id, edge_type)?
         }

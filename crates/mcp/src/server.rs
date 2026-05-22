@@ -316,11 +316,16 @@ impl ContextModeServer {
 
     #[tool(description = "Return the context-mode insight dashboard URL.")]
     async fn ctx_insight(&self) -> String {
-        format_tool_result(json!({
-            "url": "http://127.0.0.1:3030",
-            "running": false,
-            "note": "Insight dashboard not yet started. Run the insight server binary manually."
-        }))
+        let result = json!({
+            "content": [{
+                "type": "text",
+                "text": "Dashboard URL: http://127.0.0.1:3030
+                Status: not running
+                Note: Insight dashboard not yet started. Run the insight server binary manually."
+            }],
+            "isError": false,
+        });
+        format_tool_result(result)
     }
 
     #[tool(description = "Search indexed embeddings semantically.")]

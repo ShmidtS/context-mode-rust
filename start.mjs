@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import { existsSync, createWriteStream, mkdirSync, chmodSync, unlinkSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { platform, arch, homedir } from 'os';
 import https from 'https';
@@ -94,13 +94,18 @@ function installHooks(cliPath) {
     const hooksDir = join(homedir(), '.claude', 'hooks');
     mkdirSync(hooksDir, { recursive: true });
 
+    // On Windows, use .cmd wrapper instead of direct .exe path
+    const binDir = dirname(cliPath);
+    const cliCmd = IS_WIN ? join(binDir, 'context-mode.cmd') : cliPath;
+
     for (const hookType of HOOK_TYPES) {
       const hookPath = join(hooksDir, `${hookType}${IS_WIN ? '.cmd' : '.sh'}`);
       let content;
       if (IS_WIN) {
-        content = `@echo off\r\n"${cliPath}" hook claude-code ${hookType} %*\r\n`;
+        // Suppress all output except the JSON response
+        content = `@echo off\r\n"${cliCmd}" hook claude-code ${hookType} %*\r\n`;
       } else {
-        content = `#!/bin/sh\n"${cliPath}" hook claude-code ${hookType} "$@"\n`;
+        content = `#!/bin/sh\n"${cliCmd}" hook claude-code ${hookType} "$@"\n`;
       }
       writeFileSync(hookPath, content);
       if (!IS_WIN) {

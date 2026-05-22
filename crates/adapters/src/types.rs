@@ -129,27 +129,40 @@ pub enum PreToolUseDecision {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PreToolUseResponse {
-    pub decision: PreToolUseDecision,
-    pub reason: Option<String>,
+    pub permission_decision: PreToolUseDecision,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission_decision_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_input: Option<HashMap<String, Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub additional_context: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PostToolUseResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub additional_context: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_output: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PreCompactResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionStartResponse {
-    pub context: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub additional_context: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_user_message: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
