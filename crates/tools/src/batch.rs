@@ -35,10 +35,10 @@ pub async fn ctx_batch_execute(params: serde_json::Value) -> Result<serde_json::
     let mut tasks = Vec::with_capacity(params.commands.len());
 
     for command in params.commands {
-        let permit = semaphore.clone().acquire_owned().await?;
+        let semaphore = semaphore.clone();
         let timeout_ms = params.timeout;
         tasks.push(tokio::spawn(async move {
-            let _permit = permit;
+            let _permit = semaphore.acquire_owned().await?;
             run_command(command, timeout_ms).await
         }));
     }

@@ -6,6 +6,7 @@ use axum::{
     Json, Router,
     extract::State,
     http::StatusCode,
+    response::Html,
     routing::{get, post},
 };
 use context_mode_core::db_schema;
@@ -47,6 +48,12 @@ impl AppState {
 
 async fn health_check() -> &'static str {
     "OK"
+}
+
+const DASHBOARD_HTML: &str = include_str!("dashboard.html");
+
+async fn dashboard() -> Html<&'static str> {
+    Html(DASHBOARD_HTML)
 }
 
 #[derive(Deserialize)]
@@ -329,6 +336,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let app = Router::new()
+        .route("/", get(dashboard))
         .route("/health", get(health_check))
         .route("/search", post(search_handler))
         .route("/index", post(index_handler))

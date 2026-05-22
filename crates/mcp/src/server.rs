@@ -306,7 +306,14 @@ impl ContextModeServer {
 
     #[tool(description = "Return the current context-mode server version.")]
     async fn ctx_upgrade(&self) -> String {
-        env!("CARGO_PKG_VERSION").to_string()
+        let result = json!({
+            "content": [{
+                "type": "text",
+                "text": format!("context-mode v{}", env!("CARGO_PKG_VERSION"))
+            }],
+            "isError": false,
+        });
+        format_tool_result(result)
     }
 
     #[tool(description = "Purge the context-mode knowledge base and reset session stats.")]
@@ -490,10 +497,7 @@ impl ContextModeServer {
         &self,
         Parameters(params): Parameters<CtxGraphAnalyzeParams>,
     ) -> String {
-        let mut value = params_to_value(&params);
-        if let serde_json::Value::Object(ref mut object) = value {
-            object.insert("path".to_string(), serde_json::Value::String(params.path));
-        }
+        let value = params_to_value(&params);
         call_tool(|| context_mode_tools::vault::ctx_graph_analyze(value)).await
     }
 

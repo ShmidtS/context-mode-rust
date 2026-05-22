@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context Mode Insight</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;padding:24px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:12px}
+.header h1{font-size:24px;font-weight:700;color:#f8fafc}
+.header .sub{font-size:13px;color:#64748b;margin-top:2px}
+.status{display:flex;align-items:center;gap:8px;font-size:13px;color:#94a3b8}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}.dot.on{background:#22c55e}.dot.off{background:#ef4444}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px}
+.card{background:#1e293b;border-radius:12px;padding:20px;border:1px solid #334155}
+.card .label{font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.card .value{font-size:32px;font-weight:700;color:#f8fafc}.card .value.err{color:#ef4444}
+.section{background:#1e293b;border-radius:12px;padding:24px;border:1px solid #334155;margin-bottom:24px}
+.section h2{font-size:16px;font-weight:600;color:#f8fafc;margin-bottom:16px}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
+@media(max-width:768px){.chart-row{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid #334155}
+th{color:#94a3b8;font-weight:500;background:#0f172a}
+td{color:#e2e8f0}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500}
+.badge.g{background:rgba(34,197,94,.15);color:#4ade80}
+.badge.r{background:rgba(239,68,68,.15);color:#f87171}
+.tag{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;background:rgba(59,130,246,.15);color:#60a5fa;margin:2px}
+.empty{color:#64748b;font-size:14px;padding:16px 0}
+.debug{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:16px;font-family:monospace;font-size:12px;color:#94a3b8;white-space:pre-wrap;max-height:200px;overflow:auto;display:none}
+.debug.show{display:block}
+</style>
+</head>
+<body>
+<div class="header">
+<div><h1>Context Mode Insight</h1><div class="sub">Personal analytics dashboard</div></div>
+<div class="status"><span class="dot" id="dot"></span><span id="stxt">checking</span></div>
+</div>
+
+<div class="debug" id="debug"></div>
+
+<div class="grid">
+<div class="card"><div class="label">Tool Calls</div><div class="value" id="v-calls">--</div></div>
+<div class="card"><div class="label">Total Events</div><div class="value" id="v-events">--</div></div>
+<div class="card"><div class="label">Sessions</div><div class="value" id="v-sess">--</div></div>
+<div class="card"><div class="label">Errors</div><div class="value err" id="v-err">--</div></div>
+</div>
+
+<div class="chart-row">
+<div class="section"><h2>Session Activity</h2><canvas id="c-sess"></canvas></div>
+<div class="section"><h2>Top Tools</h2><canvas id="c-tools"></canvas></div>
+</div>
+
+<div class="section">
+<h2>Sessions</h2>
+<table><thead><tr><th>Session</th><th>Started</th><th>Duration</th><th>Tools</th></tr></thead>
+<tbody id="tb-sess"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody></table>
+</div>
+
+<div class="chart-row">
+<div class="section">
+<h2>Vault</h2>
+<div class="grid" style="margin-bottom:16px">
+<div class="card"><div class="label">Nodes</div><div class="value" id="v-nodes">--</div></div>
+<div class="card"><div class="label">Edges</div><div class="value" id="v-edges">--</div></div>
+</div>
+<h2>Top Tags</h2><div id="tags"><div class="empty">No tags</div></div>
+<h2 style="margin-top:16px">God Nodes</h2>
+<table><thead><tr><th>Title</th><th>Path</th><th>Degree</th></tr></thead>
+<tbody id="tb-god"><tr><td colspan="3" class="empty">No data</td></tr></tbody></table>
+</div>
+<div class="section">
+<h2>Connectors</h2>
+<table><thead><tr><th>Name</th><th>Type</th><th>Status</th></tr></thead>
+<tbody id="tb-conn"><tr><td colspan="3" class="empty">No connectors</td></tr></tbody></table>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const dbg=$('debug');
+function log(msg){dbg.classList.add('show');dbg.textContent+=(dbg.textContent?'\n':'')+msg;}
+
+async function api(url,json=true){
+try{
+  const r=await fetch(url);
+  if(!r.ok){log(url+' -> HTTP '+r.status);return null;}
+  if(json)return await r.json();
+  return await r.text();
+}catch(e){log(url+' -> ERROR: '+e.message);return null;}
+}
+
+function fmtDur(s){
+  if(!s||s<0)return'--';
+  if(s<60)return s+'s';
+  if(s<3600)return Math.floor(s/60)+'m';
+  return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';
+}
+function fmtTime(t){
+  if(!t)return'--';
+  try{return new Date(t+'Z').toLocaleString();}catch(e){return t;}
+}
+
+function renderStats(s){
+  if(!s){log('stats: no data');return;}
+  $('v-calls').textContent=s.tool_calls!=null?s.tool_calls:'--';
+  $('v-events').textContent=s.total_events!=null?s.total_events:'--';
+  $('v-sess').textContent=s.sessions!=null?s.sessions:'--';
+  $('v-err').textContent=s.errors!=null?s.errors:'--';
+}
+function renderSessions(list){
+  if(!list||!list.length){log('sessions: empty');$('tb-sess').innerHTML='<tr><td colspan="4" class="empty">No sessions</td></tr>';return;}
+  $('tb-sess').innerHTML=list.map(x=>`<tr><td style="font-family:monospace;font-size:12px">${String(x.id).substring(0,8)}</td><td>${fmtTime(x.start_time)}</td><td>${fmtDur(x.duration_seconds)}</td><td>${(x.tools_used||[]).length} tools</td></tr>`).join('');
+}
+function renderVault(v){
+  if(!v){log('vault: no data');return;}
+  $('v-nodes').textContent=v.node_count!=null?v.node_count:'--';
+  $('v-edges').textContent=v.edge_count!=null?v.edge_count:'--';
+  if(v.top_tags&&v.top_tags.length) $('tags').innerHTML=v.top_tags.map(t=>`<span class="tag">${t.tag} (${t.count})</span>`).join('');
+  else $('tags').innerHTML='<div class="empty">No tags</div>';
+  if(v.god_nodes&&v.god_nodes.length) $('tb-god').innerHTML=v.god_nodes.map(n=>`<tr><td>${n.title}</td><td style="font-size:12px;color:#94a3b8">${n.path}</td><td>${n.degree}</td></tr>`).join('');
+  else $('tb-god').innerHTML='<tr><td colspan="3" class="empty">No data</td></tr>';
+}
+function renderConnectors(list){
+  if(!list||!list.length){log('connectors: empty');$('tb-conn').innerHTML='<tr><td colspan="3" class="empty">No connectors</td></tr>';return;}
+  $('tb-conn').innerHTML=list.map(x=>`<tr><td>${x.name}</td><td>${x.type||'generic'}</td><td><span class="badge ${x.enabled?'g':'r'}">${x.enabled?'enabled':'disabled'}</span></td></tr>`).join('');
+}
+
+function drawCharts(sessions){
+  if(!sessions||!sessions.length||typeof Chart==='undefined'){log('charts: skipped (no sessions or Chart.js)');return;}
+  try{
+    const pal=['#3b82f6','#8b5cf6','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899','#14b8a6'];
+    const cBase={ticks:{color:'#94a3b8'},grid:{color:'#334155'}};
+    const sData=sessions.slice().reverse().map(s=>({l:String(s.id).substring(0,6),d:s.duration_seconds||0}));
+    new Chart($('c-sess'),{type:'bar',data:{labels:sData.map(x=>x.l),datasets:[{label:'Duration (s)',data:sData.map(x=>x.d),backgroundColor:'rgba(59,130,246,0.5)',borderColor:'#3b82f6',borderWidth:1,borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:cBase,y:cBase}}});
+    const tc={};
+    sessions.forEach(s=>(s.tools_used||[]).forEach(t=>{tc[t]=(tc[t]||0)+1;}));
+    const ts=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    if(ts.length) new Chart($('c-tools'),{type:'bar',data:{labels:ts.map(x=>x[0]),datasets:[{label:'Uses',data:ts.map(x=>x[1]),backgroundColor:pal.slice(0,ts.length).map(c=>c+'80'),borderColor:pal.slice(0,ts.length),borderWidth:1,borderRadius:4}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:cBase,y:cBase}}});
+  }catch(e){log('Chart error: '+e.message);}
+}
+
+async function init(){
+  log('init start');
+  const [stats,sessions,vault,connectors,health]=await Promise.all([
+    api('/stats'),api('/stats/sessions'),api('/vault/analytics'),api('/connectors'),api('/health',false)
+  ]);
+  log('stats='+(stats?'ok':'null')+' sessions='+(sessions?'ok('+sessions.length+')':'null')+' vault='+(vault?'ok':'null')+' connectors='+(connectors?'ok('+connectors.length+')':'null')+' health='+(health?JSON.stringify(health):'null'));
+  renderStats(stats);
+  renderSessions(sessions);
+  renderVault(vault);
+  renderConnectors(connectors);
+  const ok=health==='OK';
+  $('dot').className='dot '+(ok?'on':'off');
+  $('stxt').textContent=ok?'online':'offline';
+  if(sessions) drawCharts(sessions);
+  log('init done');
+}
+
+init();
+})();
+</script>
+</body>
+</html>
