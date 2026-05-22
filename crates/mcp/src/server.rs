@@ -314,18 +314,108 @@ impl ContextModeServer {
         call_tool(context_mode_tools::stats::ctx_purge).await
     }
 
-    #[tool(description = "Return the context-mode insight dashboard URL.")]
+    #[tool(description = "Start the context-mode insight dashboard and return its URL.")]
     async fn ctx_insight(&self) -> String {
-        let result = json!({
-            "content": [{
-                "type": "text",
-                "text": "Dashboard URL: http://127.0.0.1:3030
-                Status: not running
-                Note: Insight dashboard not yet started. Run the insight server binary manually."
-            }],
-            "isError": false,
-        });
-        format_tool_result(result)
+        use std::process::Command;
+
+        let ext = if cfg!(windows) { ".exe" } else { "" };
+        let bin_name = format!("context-mode-insight{}", ext);
+
+        let candidates = [
+            std::env::current_dir()
+                .unwrap_or_default()
+                .join(".claude-plugin")
+                .join("bin")
+                .join(&bin_name),
+            std::env::current_dir()
+                .unwrap_or_default()
+                .join("target")
+                .join("release")
+                .join(&bin_name),
+            std::env::current_dir()
+                .unwrap_or_default()
+                .join("target")
+                .join("debug")
+                .join(&bin_name),
+        ];
+
+        let binary = candidates.iter().find(|p| p.exists()).cloned();
+
+        if let Some(bin) = binary {
+            // Check if already running
+            let health = reqwest::get("http://127.0.0.1:3000/health").await;
+            let already_running = health.map(|r| r.status().is_success()).unwrap_or(false);
+
+            if !already_running {
+                match Command::new(&bin)
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .spawn()
+                {
+                    Ok(_) => {
+                        // Wait briefly for server startup
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        let result = json!({
+                            "content": [{
+                                "type": "text",
+                                "text": "Dashboard URL: http://127.0.0.1:3000\n\
+                                         Status: running\n\
+                                         Open the URL above in your browser to view the insight dashboard."
+                            }],
+                            "isError": false,
+                        });
+                        format_tool_result(result)
+                    }
+                    Err(e) => {
+                        let result = json!({
+                            "content": [{
+                                "type": "text",
+                                "text": format!(
+                                    "Failed to start insight server: {}\n\
+                                     Binary: {}\n\
+                                     Try running manually: {} --help",
+                                    e,
+                                    bin.display(),
+                                    bin.display()
+                                )
+                            }],
+                            "isError": true,
+                        });
+                        format_tool_result(result)
+                    }
+                }
+            } else {
+                let result = json!({
+                    "content": [{
+                        "type": "text",
+                        "text": "Dashboard URL: http://127.0.0.1:3000\n\
+                                 Status: running (already started)\n\
+                                 Open the URL above in your browser to view the insight dashboard."
+                    }],
+                    "isError": false,
+                });
+                format_tool_result(result)
+            }
+        } else {
+            let result = json!({
+                "content": [{
+                    "type": "text",
+                    "text": format!(
+                        "Insight server binary not found.\n\
+                         Expected: context-mode-insight{}\n\
+                         Searched:\n  - {}\n  - {}\n  - {}\n\n\
+                         Reinstall the plugin or build with:\n\
+                         cargo build --release --bin context-mode-insight",
+                        ext,
+                        candidates[0].display(),
+                        candidates[1].display(),
+                        candidates[2].display()
+                    )
+                }],
+                "isError": true,
+            });
+            format_tool_result(result)
+        }
     }
 
     #[tool(description = "Search indexed embeddings semantically.")]

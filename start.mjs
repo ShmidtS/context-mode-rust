@@ -10,6 +10,7 @@ const IS_WIN = platform() === 'win32';
 const EXT = IS_WIN ? '.exe' : '';
 const BIN_NAME = `context-mode-server${EXT}`;
 const CLI_BIN_NAME = `context-mode${EXT}`;
+const INSIGHT_BIN_NAME = `context-mode-insight${EXT}`;
 const VERSION = '1.2.7';
 const HOOK_TYPES = ['posttooluse', 'pretooluse', 'precompact', 'sessionstart', 'userpromptsubmit'];
 
@@ -152,6 +153,11 @@ async function main() {
     let cliBinary = findBinary(CLI_BIN_NAME);
     if (!cliBinary) {
       cliBinary = await downloadBinary(CLI_BIN_NAME, 'context-mode');
+    }
+
+    let insightBinary = findBinary(INSIGHT_BIN_NAME);
+    if (!insightBinary) {
+      insightBinary = await downloadBinary(INSIGHT_BIN_NAME, 'context-mode-insight');
     }
 
     if (cliBinary) {

@@ -409,6 +409,7 @@ dependencies = [
  "context-mode-tools",
  "context-mode-utils",
  "context-mode-vault",
+ "reqwest",
  "rmcp",
  "serde",
  "serde_json",
