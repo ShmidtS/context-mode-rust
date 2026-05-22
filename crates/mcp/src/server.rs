@@ -108,6 +108,7 @@ struct CtxVaultIndexParams {
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[serde(rename_all = "camelCase")]
 struct CtxVaultGraphParams {
     #[schemars(
         description = "Traversal mode: neighbors, backlinks, tag-cluster, surprises, confidence-filter"
@@ -460,15 +461,7 @@ impl ContextModeServer {
 
     #[tool(description = "Traverse indexed vault graph relationships.")]
     async fn ctx_vault_graph(&self, Parameters(params): Parameters<CtxVaultGraphParams>) -> String {
-        let mut value = params_to_value(&params);
-        if let serde_json::Value::Object(ref mut object) = value {
-            if let Some(node_path) = object.remove("node_path") {
-                object.insert("nodePath".to_string(), node_path);
-            }
-            if let Some(max_hops) = object.remove("max_hops") {
-                object.insert("maxHops".to_string(), max_hops);
-            }
-        }
+        let value = params_to_value(&params);
         call_tool(|| context_mode_tools::vault::ctx_vault_graph(value)).await
     }
 

@@ -45,6 +45,8 @@ enum Commands {
         #[arg(short, long, default_value = "default")]
         repo: String,
     },
+    /// Show session statistics
+    Stats,
     /// Run a platform hook (reads event JSON from stdin)
     Hook {
         /// Target platform (e.g. claude-code)
@@ -93,6 +95,18 @@ async fn main() -> anyhow::Result<()> {
             let results = local_indexer::index_repository(&mut conn, &repo, &path, &provider)?;
             let json = serde_json::to_string_pretty(&results)?;
             println!("{}", json);
+        }
+        Some(Commands::Stats) => {
+            let result = context_mode_tools::stats::ctx_stats().await?;
+            let text = result
+                .get("content")
+                .and_then(|c| c.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|item| item.get("text"))
+                .and_then(|t| t.as_str())
+                .unwrap_or(&result.to_string())
+                .to_string();
+            println!("{}", text);
         }
         Some(Commands::Hook {
             platform,
@@ -159,6 +173,12 @@ mod tests {
     fn test_cli_parse_doctor() {
         let args = Args::parse_from(["context-mode", "doctor"]);
         assert!(matches!(args.command, Some(Commands::Doctor)));
+    }
+
+    #[test]
+    fn test_cli_parse_stats() {
+        let args = Args::parse_from(["context-mode", "stats"]);
+        assert!(matches!(args.command, Some(Commands::Stats)));
     }
 
     #[test]
