@@ -1,6 +1,7 @@
 use anyhow::Result;
 use context_mode_store::{ContentStore, IndexOptions, SearchMode, SourceMatchMode};
 use serde_json::json;
+use std::process::Stdio;
 use std::sync::Arc;
 use tokio::process::Command;
 use tokio::sync::Semaphore;
@@ -112,22 +113,23 @@ async fn run_command(command: BatchCommand, timeout_ms: Option<u64>) -> Result<C
         cmd
     };
 
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
     let execution = cmd.output();
-    let output = if let Some(timeout_ms) = timeout_ms {
-        match timeout(Duration::from_millis(timeout_ms), execution).await {
-            Ok(output) => output?,
-            Err(_) => {
-                let output = format!("Command timed out after {timeout_ms} ms");
-                return Ok(CommandResult {
-                    label: command.label,
-                    line_count: output.lines().count(),
-                    output,
-                    exit_code: None,
-                });
-            }
+    let effective_timeout = timeout_ms.unwrap_or(30_000);
+    let output = match timeout(Duration::from_millis(effective_timeout), execution).await {
+        Ok(output) => output?,
+        Err(_) => {
+            let output = format!("Command timed out after {effective_timeout} ms");
+            return Ok(CommandResult {
+                label: command.label,
+                line_count: output.lines().count(),
+                output,
+                exit_code: None,
+            });
         }
-    } else {
-        execution.await?
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);

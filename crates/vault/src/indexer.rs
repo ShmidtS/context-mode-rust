@@ -50,6 +50,10 @@ const DEFAULT_EXCLUDE_DIRS: &[&str] = &[
     "coverage",
     ".claude",
     ".obsidian",
+    "target",
+    ".context-mode",
+    ".claude-plugin",
+    ".pi",
 ];
 const CODE_EXTENSIONS: &[&str] = &[
     ".ts", ".js", ".mjs", ".cjs", ".py", ".pyi", ".pyw", ".go", ".rs", ".java", ".kt", ".kts",
@@ -151,6 +155,9 @@ pub fn index_vault(
         .filter(|f| is_code_extension(&extension(f)))
         .cloned()
         .collect();
+
+    // Use transaction for batch operations
+    store.begin_transaction()?;
 
     let mut notes = Vec::new();
     for rel_path in &md_files {
@@ -392,6 +399,9 @@ pub fn index_vault(
             })?;
         }
     }
+
+    // Commit transaction
+    store.commit_transaction()?;
 
     Ok(result)
 }

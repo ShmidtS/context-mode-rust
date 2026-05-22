@@ -71,6 +71,21 @@ impl VaultGraphStore {
         &self.conn
     }
 
+    pub fn begin_transaction(&self) -> Result<()> {
+        self.conn.execute_batch("BEGIN TRANSACTION")?;
+        Ok(())
+    }
+
+    pub fn commit_transaction(&self) -> Result<()> {
+        self.conn.execute_batch("COMMIT")?;
+        Ok(())
+    }
+
+    pub fn rollback_transaction(&self) -> Result<()> {
+        self.conn.execute_batch("ROLLBACK")?;
+        Ok(())
+    }
+
     fn init_schema(&self) -> Result<()> {
         self.conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS vault_nodes (
