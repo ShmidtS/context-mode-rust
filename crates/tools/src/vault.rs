@@ -134,20 +134,14 @@ pub async fn ctx_vault_graph(params: Value) -> Result<Value> {
             search.tag_cluster(tag)?
         }
         "surprises" => {
-            let limit = params
-                .get("limit")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(10) as usize;
+            let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
             let analysis = context_mode_vault::analyze_graph(&store, None)?;
             let formatted = analysis
                 .surprising_connections
                 .iter()
                 .take(limit)
                 .map(|conn| {
-                    let explanation = conn
-                        .explanation
-                        .as_deref()
-                        .unwrap_or("(no explanation)");
+                    let explanation = conn.explanation.as_deref().unwrap_or("(no explanation)");
                     format!(
                         "- {} → {} (type={}, score={:.2})\n  {}\n  Tags: {:?} ↔ {:?}",
                         conn.source_path,
@@ -164,7 +158,11 @@ pub async fn ctx_vault_graph(params: Value) -> Result<Value> {
             return Ok(text_response(if formatted.is_empty() {
                 "No surprising connections found.".to_string()
             } else {
-                format!("Found {} surprising connections:\n{}", analysis.surprising_connections.len().min(limit), formatted)
+                format!(
+                    "Found {} surprising connections:\n{}",
+                    analysis.surprising_connections.len().min(limit),
+                    formatted
+                )
             }));
         }
         "confidence-filter" => {

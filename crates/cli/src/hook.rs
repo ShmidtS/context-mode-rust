@@ -91,7 +91,7 @@ async fn handle_post_tool_use(db: &SessionDB, input: &str) -> anyhow::Result<()>
 }
 
 async fn handle_pre_tool_use() -> anyhow::Result<()> {
-    println!(r#"{{"decision":"approve"}}"#);
+    println!("{EMPTY_JSON}");
     Ok(())
 }
 
