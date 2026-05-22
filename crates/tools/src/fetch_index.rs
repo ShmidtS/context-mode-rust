@@ -22,17 +22,23 @@ pub async fn ctx_fetch_and_index(params: serde_json::Value) -> Result<serde_json
     let params: FetchAndIndexParams = serde_json::from_value(params)?;
     let (markdown, status, cached) = fetch_markdown(&params).await?;
     let content_length = markdown.len();
+    let source_name = params.source.clone().unwrap_or_else(|| params.url.clone());
     let mut store = crate::store_util::open_store()?;
-    store.index_content(
-        markdown,
-        params.source.unwrap_or_else(|| params.url.clone()),
-    )?;
+    store.index_content(markdown, source_name.clone())?;
 
     Ok(json!({
-        "url": params.url,
-        "status": status,
-        "content_length": content_length,
-        "cached": cached,
+        "content": [{
+            "type": "text",
+            "text": format!(
+                "Fetched {} (status {}, {} chars, cached: {})\nIndexed as: {}",
+                params.url,
+                status,
+                content_length,
+                cached,
+                source_name
+            ),
+        }],
+        "isError": false,
     }))
 }
 

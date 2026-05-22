@@ -18,8 +18,7 @@ pub fn register_connector_tools() -> Result<()> {
 pub async fn ctx_connector_list() -> Result<Value> {
     match load_registry() {
         Ok(connectors) => Ok(serde_json::json!({
-            "connectors": connectors,
-            "content": [{ "type": "text", "text": format!("{} connector(s) configured", connectors.len()) }],
+            "content": [{ "type": "text", "text": format!("{} connector(s) configured\n{}", connectors.len(), serde_json::to_string_pretty(&connectors).unwrap_or_default()) }],
             "isError": false
         })),
         Err(err) => Ok(error_response(format!(
@@ -59,8 +58,7 @@ pub async fn ctx_connector_add(params: Value) -> Result<Value> {
 
     match save_registry(&connectors) {
         Ok(()) => Ok(serde_json::json!({
-            "connector": connector,
-            "content": [{ "type": "text", "text": format!("Connector '{name}' added") }],
+            "content": [{ "type": "text", "text": format!("Connector '{}' added", name) }],
             "isError": false
         })),
         Err(err) => Ok(error_response(format!(
@@ -91,10 +89,7 @@ pub async fn ctx_connector_sync(params: Value) -> Result<Value> {
     }
 
     Ok(serde_json::json!({
-        "name": name,
-        "status": "synced",
-        "last_sync": null,
-        "content": [{ "type": "text", "text": format!("Connector '{name}' synced") }],
+        "content": [{ "type": "text", "text": format!("Connector '{}' synced", name) }],
         "isError": false
     }))
 }

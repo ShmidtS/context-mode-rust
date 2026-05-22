@@ -23,7 +23,17 @@ pub async fn ctx_dead_code(params: Value) -> anyhow::Result<Value> {
         })
         .collect();
 
-    Ok(json!(dead_symbols))
+    Ok(json!({
+        "content": [{
+            "type": "text",
+            "text": if dead_symbols.is_empty() {
+                "No dead functions found.".to_string()
+            } else {
+                serde_json::to_string_pretty(&dead_symbols)?
+            }
+        }],
+        "isError": false
+    }))
 }
 
 pub async fn ctx_complexity(params: Value) -> anyhow::Result<Value> {
@@ -64,7 +74,13 @@ pub async fn ctx_complexity(params: Value) -> anyhow::Result<Value> {
         })
         .collect();
 
-    Ok(json!(results))
+    Ok(json!({
+        "content": [{
+            "type": "text",
+            "text": serde_json::to_string_pretty(&results)?
+        }],
+        "isError": false
+    }))
 }
 
 pub async fn ctx_dep_graph(params: Value) -> anyhow::Result<Value> {
@@ -90,8 +106,16 @@ pub async fn ctx_dep_graph(params: Value) -> anyhow::Result<Value> {
     }
 
     Ok(json!({
-        "nodes": nodes,
-        "edges": edges,
+        "content": [{
+            "type": "text",
+            "text": format!(
+                "Dependency graph: {} nodes, {} edges\n{}",
+                nodes.len(),
+                edges.len(),
+                serde_json::to_string_pretty(&json!({"nodes": nodes, "edges": edges}))?
+            )
+        }],
+        "isError": false
     }))
 }
 
