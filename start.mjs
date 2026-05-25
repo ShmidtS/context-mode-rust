@@ -11,7 +11,7 @@ const EXT = IS_WIN ? '.exe' : '';
 const BIN_NAME = `context-mode-server${EXT}`;
 const CLI_BIN_NAME = `context-mode${EXT}`;
 const INSIGHT_BIN_NAME = `context-mode-insight${EXT}`;
-const VERSION = '1.3.3';
+const VERSION = '1.3.4';
 const HOOK_TYPES = ['posttooluse', 'pretooluse', 'precompact', 'sessionstart', 'userpromptsubmit'];
 
 function log(...args) {
@@ -249,7 +249,6 @@ async function main() {
     }
 
     if (cliBinary) {
-      installHooks(cliBinary);
       installSettingsHooks();
     }
 

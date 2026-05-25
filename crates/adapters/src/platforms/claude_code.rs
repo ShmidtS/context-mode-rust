@@ -11,8 +11,12 @@ pub struct ClaudeCodeAdapter;
 
 impl HookAdapter for ClaudeCodeAdapter {
     fn install(&self, plugin_root: &str) -> Result<Vec<String>, AdapterError> {
+        let mut installed = Vec::new();
+
+        // Clean up legacy file-based hooks that cause "cannot execute binary file"
+        // errors in Git Bash on Windows (bash cannot execute .cmd files).
         let base = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-        let installer = crate::hook_runtime::HookInstaller::new(base);
+        let hooks_dir = base.join(".claude").join("hooks");
         let hook_types = [
             "posttooluse",
             "pretooluse",
@@ -20,18 +24,20 @@ impl HookAdapter for ClaudeCodeAdapter {
             "sessionstart",
             "userpromptsubmit",
         ];
-        let mut installed = Vec::new();
         for hook_type in &hook_types {
-            let script = build_hook_script(hook_type, plugin_root);
-            let path = installer.install_hook("claude-code", hook_type, &script)?;
-            installed.push(format!(
-                "Installed {} hook script at {}",
-                hook_type,
-                path.display()
-            ));
+            for ext in ["cmd", "sh"] {
+                let path = hooks_dir.join(format!("{hook_type}.{ext}"));
+                if path.exists() {
+                    let _ = fs::remove_file(&path);
+                    installed.push(format!(
+                        "Removed legacy hook file {}",
+                        path.display()
+                    ));
+                }
+            }
         }
 
-        // Install settings.json hooks
+        // Install settings.json hooks (declarative hooks are the only supported mechanism)
         match self.install_settings_hooks(plugin_root) {
             Ok(mut settings_results) => installed.append(&mut settings_results),
             Err(e) => installed.push(format!("Settings hooks install failed: {}", e)),
@@ -42,7 +48,7 @@ impl HookAdapter for ClaudeCodeAdapter {
 
     fn uninstall(&self) -> Result<Vec<String>, AdapterError> {
         let base = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-        let installer = crate::hook_runtime::HookInstaller::new(base);
+        let hooks_dir = base.join(".claude").join("hooks");
         let hook_types = [
             "posttooluse",
             "pretooluse",
@@ -52,8 +58,13 @@ impl HookAdapter for ClaudeCodeAdapter {
         ];
         let mut removed = Vec::new();
         for hook_type in &hook_types {
-            installer.uninstall_hook("claude-code", hook_type)?;
-            removed.push(format!("Uninstalled {} hook", hook_type));
+            for ext in ["cmd", "sh"] {
+                let path = hooks_dir.join(format!("{hook_type}.{ext}"));
+                if path.exists() {
+                    fs::remove_file(&path)?;
+                    removed.push(format!("Removed legacy hook {}", path.display()));
+                }
+            }
         }
         Ok(removed)
     }
@@ -113,27 +124,6 @@ fn rewrite_hook_commands(value: &mut Value, plugin_root: &str) {
     }
 }
 
-fn build_hook_script(hook_type: &str, plugin_root: &str) -> String {
-    let bin_dir = PathBuf::from(plugin_root)
-        .join(".claude-plugin")
-        .join("bin");
-    if cfg!(windows) {
-        let exe_path = bin_dir.join("context-mode.exe");
-        format!(
-            "@echo off\n\"{}\" hook claude-code {} %*\n",
-            exe_path.to_string_lossy(),
-            hook_type
-        )
-    } else {
-        let bin_path = bin_dir.join("context-mode");
-        format!(
-            "#!/bin/sh\n\"{}\" hook claude-code {} \"{}\"\n",
-            bin_path.to_string_lossy(),
-            hook_type,
-            "$@"
-        )
-    }
-}
 
 impl ClaudeCodeAdapter {
     fn install_settings_hooks(&self, plugin_root: &str) -> Result<Vec<String>, AdapterError> {
