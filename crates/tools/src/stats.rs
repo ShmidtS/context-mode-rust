@@ -92,6 +92,74 @@ pub async fn ctx_doctor() -> anyhow::Result<serde_json::Value> {
         ));
     }
     checks.push("Core dependencies: OK".to_string());
+
+    // Check Claude Code settings.json hooks
+    let home = dirs::home_dir();
+    if let Some(home) = home {
+        let settings_path = home.join(".claude").join("settings.json");
+        if settings_path.exists() {
+            match std::fs::read_to_string(&settings_path) {
+                Ok(raw) => match serde_json::from_str::<serde_json::Value>(&raw) {
+                    Ok(settings) => {
+                        if let Some(hooks) = settings.get("hooks") {
+                            let has_context_mode = hooks.get("PostToolUse")
+                                .and_then(|p| p.as_array())
+                                .map(|arr| arr.iter().any(|entry| {
+                                    entry.get("hooks")
+                                        .and_then(|h| h.as_array())
+                                        .map(|hooks| hooks.iter().any(|hook| {
+                                            hook.get("command")
+                                                .and_then(|c| c.as_str())
+                                                .map(|s| s.contains("context-mode hook claude-code"))
+                                                .unwrap_or(false)
+                                        }))
+                                        .unwrap_or(false)
+                                }))
+                                .unwrap_or(false);
+                            if has_context_mode {
+                                checks.push(format!(
+                                    "Claude Code settings hooks: OK ({})",
+                                    settings_path.display()
+                                ));
+                            } else {
+                                checks.push(format!(
+                                    "Claude Code settings hooks: MISSING context-mode hooks in {}",
+                                    settings_path.display()
+                                ));
+                            }
+                        } else {
+                            checks.push(format!(
+                                "Claude Code settings hooks: MISSING (no 'hooks' key in {})",
+                                settings_path.display()
+                            ));
+                        }
+                    }
+                    Err(e) => {
+                        checks.push(format!(
+                            "Claude Code settings hooks: PARSE ERROR {} — {}",
+                            settings_path.display(),
+                            e
+                        ));
+                    }
+                },
+                Err(e) => {
+                    checks.push(format!(
+                        "Claude Code settings hooks: READ ERROR {} — {}",
+                        settings_path.display(),
+                        e
+                    ));
+                }
+            }
+        } else {
+            checks.push(format!(
+                "Claude Code settings hooks: MISSING ({} not found)",
+                settings_path.display()
+            ));
+        }
+    } else {
+        checks.push("Claude Code settings hooks: UNKNOWN (could not determine home dir)".to_string());
+    }
+
     checks.push(String::new());
     checks.push("Registered tools (29):".to_string());
     for tool in [

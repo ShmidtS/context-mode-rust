@@ -2,6 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use context_mode_adapters::platforms::claude_code::ClaudeCodeAdapter;
+use context_mode_adapters::types::HookAdapter;
 use context_mode_core::db_schema;
 use rusqlite::Connection;
 
@@ -41,6 +43,43 @@ pub fn run() -> Result<()> {
         fs::write(&connectors_path, "[]")
             .with_context(|| format!("Failed to create {}", connectors_path.display()))?;
         println!("Created connectors file: {}", connectors_path.display());
+    }
+
+    // On Windows, remove Unix shell-script shims that clash with .exe resolution
+    #[cfg(windows)]
+    {
+        let bin_dir = std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(".claude-plugin")
+            .join("bin");
+        for name in ["context-mode", "context-mode-server", "context-mode-insight"] {
+            let shim = bin_dir.join(name);
+            if shim.exists() {
+                if let Ok(meta) = std::fs::metadata(&shim) {
+                    if meta.len() < 4096 {
+                        let _ = std::fs::remove_file(&shim);
+                        println!("Removed Unix shim on Windows: {}", shim.display());
+                    }
+                }
+            }
+        }
+    }
+
+    // Install Claude Code hooks (scripts + settings.json)
+    let adapter = ClaudeCodeAdapter;
+    let plugin_root = std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .to_string_lossy()
+        .to_string();
+    match adapter.install(&plugin_root) {
+        Ok(messages) => {
+            for msg in messages {
+                println!("{}", msg);
+            }
+        }
+        Err(e) => {
+            println!("Warning: could not install Claude Code hooks: {}", e);
+        }
     }
 
     Ok(())

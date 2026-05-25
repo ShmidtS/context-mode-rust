@@ -1,4 +1,7 @@
+use std::fs;
 use std::path::PathBuf;
+
+use serde_json::Value;
 
 use crate::base::BaseAdapter;
 use crate::detect::get_session_dir_segments;
@@ -7,7 +10,7 @@ use crate::types::{AdapterError, DiagnosticResult, DiagnosticStatus, HookAdapter
 pub struct ClaudeCodeAdapter;
 
 impl HookAdapter for ClaudeCodeAdapter {
-    fn install(&self, _plugin_root: &str) -> Result<Vec<String>, AdapterError> {
+    fn install(&self, plugin_root: &str) -> Result<Vec<String>, AdapterError> {
         let base = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
         let installer = crate::hook_runtime::HookInstaller::new(base);
         let hook_types = [
@@ -22,11 +25,18 @@ impl HookAdapter for ClaudeCodeAdapter {
             let script = build_hook_script(hook_type);
             let path = installer.install_hook("claude-code", hook_type, &script)?;
             installed.push(format!(
-                "Installed {} hook at {}",
+                "Installed {} hook script at {}",
                 hook_type,
                 path.display()
             ));
         }
+
+        // Install settings.json hooks
+        match self.install_settings_hooks(plugin_root) {
+            Ok(mut settings_results) => installed.append(&mut settings_results),
+            Err(e) => installed.push(format!("Settings hooks install failed: {}", e)),
+        }
+
         Ok(installed)
     }
 
@@ -68,10 +78,34 @@ impl HookAdapter for ClaudeCodeAdapter {
     }
 }
 
+/// Recursively walk a JSON value and replace `"context-mode hook"` with
+/// `"context-mode.cmd hook"` in every `"command"` string field (Windows only).
+fn rewrite_hook_commands(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            for (key, val) in map.iter_mut() {
+                if key == "command" {
+                    if let Value::String(s) = val {
+                        *s = s.replace("context-mode hook", "context-mode.cmd hook");
+                    }
+                } else {
+                    rewrite_hook_commands(val);
+                }
+            }
+        }
+        Value::Array(arr) => {
+            for item in arr.iter_mut() {
+                rewrite_hook_commands(item);
+            }
+        }
+        _ => {}
+    }
+}
+
 fn build_hook_script(hook_type: &str) -> String {
     if cfg!(windows) {
         format!(
-            "@echo off\ncontext-mode hook claude-code {} %*\n",
+            "@echo off\ncontext-mode.cmd hook claude-code {} %*\n",
             hook_type
         )
     } else {
@@ -79,6 +113,53 @@ fn build_hook_script(hook_type: &str) -> String {
             "#!/bin/sh\ncontext-mode hook claude-code {} \"{}\"\n",
             hook_type, "$@"
         )
+    }
+}
+
+impl ClaudeCodeAdapter {
+    fn install_settings_hooks(&self, plugin_root: &str) -> Result<Vec<String>, AdapterError> {
+        let hooks_path = PathBuf::from(plugin_root).join("hooks").join("hooks.json");
+        if !hooks_path.exists() {
+            return Ok(vec![format!(
+                "hooks.json not found at {}, skipping settings hooks",
+                hooks_path.display()
+            )]);
+        }
+
+        let hooks_raw = fs::read_to_string(&hooks_path)?;
+        let hooks_value: Value = serde_json::from_str(&hooks_raw)?;
+        let hooks = hooks_value.get("hooks").ok_or_else(|| {
+            AdapterError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "hooks.json missing 'hooks' field",
+            ))
+        })?;
+
+        // Backup existing settings
+        let _ = self.backup_settings();
+
+        let mut settings = self.read_settings()?.unwrap_or_else(|| {
+            serde_json::json!({})
+        });
+
+        // On Windows, rewrite "context-mode hook" -> "context-mode.cmd hook" in all
+        // command strings so shells resolve the .cmd wrapper, not the extension-less bash script.
+        let mut hooks = hooks.clone();
+        if cfg!(windows) {
+            rewrite_hook_commands(&mut hooks);
+        }
+
+        // Insert or replace hooks in settings
+        if let Some(obj) = settings.as_object_mut() {
+            obj.insert("hooks".to_string(), hooks);
+        }
+
+        self.write_settings(&settings)?;
+
+        Ok(vec![format!(
+            "Installed context-mode hooks in {}",
+            self.settings_path().display()
+        )])
     }
 }
 

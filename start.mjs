@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { existsSync, createWriteStream, mkdirSync, chmodSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, createWriteStream, mkdirSync, chmodSync, unlinkSync, writeFileSync, readFileSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { platform, arch, homedir } from 'os';
@@ -11,7 +11,7 @@ const EXT = IS_WIN ? '.exe' : '';
 const BIN_NAME = `context-mode-server${EXT}`;
 const CLI_BIN_NAME = `context-mode${EXT}`;
 const INSIGHT_BIN_NAME = `context-mode-insight${EXT}`;
-const VERSION = '1.2.10';
+const VERSION = '1.3.0';
 const HOOK_TYPES = ['posttooluse', 'pretooluse', 'precompact', 'sessionstart', 'userpromptsubmit'];
 
 function log(...args) {
@@ -90,6 +90,24 @@ async function downloadBinary(name, assetPrefix) {
   }
 }
 
+function removeUnixShimsOnWindows(dir) {
+  if (!IS_WIN) return;
+  for (const name of ['context-mode', 'context-mode-server', 'context-mode-insight']) {
+    const shim = join(dir, name);
+    try {
+      if (existsSync(shim)) {
+        const s = statSync(shim);
+        if (s.isFile() && s.size < 4096) {
+          unlinkSync(shim);
+          log('Removed Unix shim on Windows:', shim);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+
 function installHooks(cliPath) {
   try {
     const hooksDir = join(homedir(), '.claude', 'hooks');
@@ -97,6 +115,7 @@ function installHooks(cliPath) {
 
     // On Windows, use .cmd wrapper instead of direct .exe path
     const binDir = dirname(cliPath);
+    removeUnixShimsOnWindows(binDir);
     const cliCmd = IS_WIN ? join(binDir, 'context-mode.cmd') : cliPath;
 
     for (const hookType of HOOK_TYPES) {
@@ -116,6 +135,66 @@ function installHooks(cliPath) {
     log('Hooks installed in', hooksDir);
   } catch (e) {
     log('Hook install warning:', e.message);
+  }
+}
+
+function installSettingsHooks() {
+  try {
+    const hooksJsonPath = join(PLUGIN_ROOT, 'hooks', 'hooks.json');
+    if (!existsSync(hooksJsonPath)) {
+      log('hooks.json not found at', hooksJsonPath, 'skipping settings hooks');
+      return;
+    }
+
+    const hooksJson = JSON.parse(readFileSync(hooksJsonPath, 'utf8'));
+    if (!hooksJson.hooks) {
+      log('No hooks field in hooks.json');
+      return;
+    }
+
+    const settingsPath = join(homedir(), '.claude', 'settings.json');
+    let settings = {};
+    if (existsSync(settingsPath)) {
+      try {
+        settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+      } catch (e) {
+        log('Warning: could not parse existing settings.json, creating fresh one');
+      }
+    }
+
+    // Backup existing settings before mutation
+    if (existsSync(settingsPath)) {
+      const backupPath = settingsPath + '.bak';
+      try {
+        writeFileSync(backupPath, JSON.stringify(settings, null, 2));
+      } catch (e) {
+        log('Warning: could not create settings backup:', e.message);
+      }
+    }
+
+    // On Windows, rewrite commands to use context-mode.cmd instead of context-mode
+    // so that shells resolve the .cmd wrapper rather than the extension-less bash script.
+    function rewriteCommands(obj) {
+      if (Array.isArray(obj)) {
+        for (const item of obj) rewriteCommands(item);
+      } else if (obj && typeof obj === 'object') {
+        for (const key of Object.keys(obj)) {
+          if (key === 'command' && typeof obj[key] === 'string' && IS_WIN) {
+            obj[key] = obj[key].replace(/context-mode hook/g, 'context-mode.cmd hook');
+          } else {
+            rewriteCommands(obj[key]);
+          }
+        }
+      }
+    }
+    rewriteCommands(hooksJson.hooks);
+
+    // Merge canonical context-mode hooks into settings
+    settings.hooks = hooksJson.hooks;
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    log('Settings hooks installed in', settingsPath);
+  } catch (e) {
+    log('Settings hook install warning:', e.message);
   }
 }
 
@@ -162,6 +241,7 @@ async function main() {
 
     if (cliBinary) {
       installHooks(cliBinary);
+      installSettingsHooks();
     }
 
     let child;

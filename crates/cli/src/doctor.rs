@@ -1,4 +1,5 @@
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -24,6 +25,63 @@ pub async fn run() -> Result<()> {
         "context-mode-server in PATH",
         check_executable_in_path("context-mode-server"),
     );
+    report(
+        "Claude Code settings hooks",
+        check_claude_code_settings_hooks(),
+    );
+
+    Ok(())
+}
+
+fn check_claude_code_settings_hooks() -> Result<()> {
+    let settings_path = dirs::home_dir()
+        .ok_or_else(|| anyhow!("Could not determine home directory"))?
+        .join(".claude")
+        .join("settings.json");
+
+    if !settings_path.exists() {
+        return Err(anyhow!("{} does not exist", settings_path.display()));
+    }
+
+    let raw = fs::read_to_string(&settings_path)
+        .with_context(|| format!("Could not read {}", settings_path.display()))?;
+    let settings: serde_json::Value = serde_json::from_str(&raw)
+        .with_context(|| format!("Could not parse {}", settings_path.display()))?;
+
+    let hooks = settings
+        .get("hooks")
+        .ok_or_else(|| anyhow!("No 'hooks' key in {}", settings_path.display()))?;
+
+    let posttooluse = hooks
+        .get("PostToolUse")
+        .ok_or_else(|| anyhow!("No PostToolUse hook in settings"))?;
+
+    let has_context_mode = posttooluse
+        .as_array()
+        .map(|arr| {
+            arr.iter().any(|entry| {
+                entry
+                    .get("hooks")
+                    .and_then(|h| h.as_array())
+                    .map(|hooks| {
+                        hooks.iter().any(|hook| {
+                            hook.get("command")
+                                .and_then(|c| c.as_str())
+                                .map(|s| s.contains("context-mode hook claude-code"))
+                                .unwrap_or(false)
+                        })
+                    })
+                    .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false);
+
+    if !has_context_mode {
+        return Err(anyhow!(
+            "PostToolUse hook in {} does not contain context-mode command",
+            settings_path.display()
+        ));
+    }
 
     Ok(())
 }
