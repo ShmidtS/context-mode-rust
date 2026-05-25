@@ -12,6 +12,35 @@ fn context_mode_dir() -> Result<PathBuf> {
     Ok(config_dir.join("context-mode"))
 }
 
+/// Determine plugin root from env var, executable location, or current dir.
+/// When installed from marketplace the binary lives in
+/// <plugin_root>/.claude-plugin/bin/context-mode.exe; when running a
+/// dev build it is in <plugin_root>/target/release/context-mode.exe.
+fn resolve_plugin_root() -> PathBuf {
+    if let Ok(root) = std::env::var("CLAUDE_PLUGIN_ROOT") {
+        return PathBuf::from(root);
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        let mut dir = exe.parent().map(PathBuf::from).unwrap_or_default();
+        // Walk up looking for .claude-plugin/plugin.json (marketplace) or
+        // Cargo.toml (dev workspace root).
+        loop {
+            if dir.join(".claude-plugin").join("plugin.json").exists()
+                || dir.join("Cargo.toml").exists()
+                || dir.join("start.mjs").exists()
+            {
+                return dir;
+            }
+            if !dir.pop() {
+                break;
+            }
+        }
+    }
+
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
 pub fn run() -> Result<()> {
     let config_dir = context_mode_dir()?;
     if config_dir.exists() {
@@ -45,13 +74,12 @@ pub fn run() -> Result<()> {
         println!("Created connectors file: {}", connectors_path.display());
     }
 
+    let plugin_root = resolve_plugin_root();
+
     // On Windows, remove Unix shell-script shims that clash with .exe resolution
     #[cfg(windows)]
     {
-        let bin_dir = std::env::current_dir()
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join(".claude-plugin")
-            .join("bin");
+        let bin_dir = plugin_root.join(".claude-plugin").join("bin");
         for name in [
             "context-mode",
             "context-mode-server",
@@ -71,11 +99,8 @@ pub fn run() -> Result<()> {
 
     // Install Claude Code hooks (scripts + settings.json)
     let adapter = ClaudeCodeAdapter;
-    let plugin_root = std::env::current_dir()
-        .unwrap_or_else(|_| PathBuf::from("."))
-        .to_string_lossy()
-        .to_string();
-    match adapter.install(&plugin_root) {
+    let plugin_root_str = plugin_root.to_string_lossy().to_string();
+    match adapter.install(&plugin_root_str) {
         Ok(messages) => {
             for msg in messages {
                 println!("{}", msg);
