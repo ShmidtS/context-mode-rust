@@ -22,7 +22,7 @@ impl HookAdapter for ClaudeCodeAdapter {
         ];
         let mut installed = Vec::new();
         for hook_type in &hook_types {
-            let script = build_hook_script(hook_type);
+            let script = build_hook_script(hook_type, plugin_root);
             let path = installer.install_hook("claude-code", hook_type, &script)?;
             installed.push(format!(
                 "Installed {} hook script at {}",
@@ -80,38 +80,52 @@ impl HookAdapter for ClaudeCodeAdapter {
 
 /// Recursively walk a JSON value and replace `"context-mode hook"` with
 /// `"context-mode.cmd hook"` in every `"command"` string field (Windows only).
-fn rewrite_hook_commands(value: &mut Value) {
+fn rewrite_hook_commands(value: &mut Value, plugin_root: &str) {
+    let bin_path = PathBuf::from(plugin_root)
+        .join(".claude-plugin")
+        .join("bin")
+        .join("context-mode.cmd");
+    let replacement = format!(r#""{}" hook"#, bin_path.to_string_lossy());
+
     match value {
         Value::Object(map) => {
             for (key, val) in map.iter_mut() {
                 if key == "command" {
                     if let Value::String(s) = val {
-                        *s = s.replace("context-mode hook", "context-mode.cmd hook");
+                        *s = s.replace("context-mode hook", &replacement);
                     }
                 } else {
-                    rewrite_hook_commands(val);
+                    rewrite_hook_commands(val, plugin_root);
                 }
             }
         }
         Value::Array(arr) => {
             for item in arr.iter_mut() {
-                rewrite_hook_commands(item);
+                rewrite_hook_commands(item, plugin_root);
             }
         }
         _ => {}
     }
 }
 
-fn build_hook_script(hook_type: &str) -> String {
+fn build_hook_script(hook_type: &str, plugin_root: &str) -> String {
+    let bin_dir = PathBuf::from(plugin_root)
+        .join(".claude-plugin")
+        .join("bin");
     if cfg!(windows) {
+        let cmd_path = bin_dir.join("context-mode.cmd");
         format!(
-            "@echo off\ncontext-mode.cmd hook claude-code {} %*\n",
+            "@echo off\n\"{}\" hook claude-code {} %*\n",
+            cmd_path.to_string_lossy(),
             hook_type
         )
     } else {
+        let bin_path = bin_dir.join("context-mode");
         format!(
-            "#!/bin/sh\ncontext-mode hook claude-code {} \"{}\"\n",
-            hook_type, "$@"
+            "#!/bin/sh\n\"{}\" hook claude-code {} \"{}\"\n",
+            bin_path.to_string_lossy(),
+            hook_type,
+            "$@"
         )
     }
 }
@@ -135,19 +149,29 @@ impl ClaudeCodeAdapter {
             ))
         })?;
 
-        // Backup existing settings
-        let _ = self.backup_settings();
-
         let mut settings = self
             .read_settings()?
             .unwrap_or_else(|| serde_json::json!({}));
 
-        // On Windows, rewrite "context-mode hook" -> "context-mode.cmd hook" in all
-        // command strings so shells resolve the .cmd wrapper, not the extension-less bash script.
+        // On Windows, rewrite "context-mode hook" -> absolute path to context-mode.cmd in all
+        // command strings so shells resolve the binary directly.
         let mut hooks = hooks.clone();
         if cfg!(windows) {
-            rewrite_hook_commands(&mut hooks);
+            rewrite_hook_commands(&mut hooks, plugin_root);
         }
+
+        // Skip write if hooks are already identical
+        if let Some(current_hooks) = settings.get("hooks") {
+            if current_hooks == &hooks {
+                return Ok(vec![format!(
+                    "Hooks already up to date in {}",
+                    self.settings_path().display()
+                )]);
+            }
+        }
+
+        // Backup existing settings before mutating
+        let _ = self.backup_settings();
 
         // Insert or replace hooks in settings
         if let Some(obj) = settings.as_object_mut() {
