@@ -79,12 +79,17 @@ impl HookAdapter for ClaudeCodeAdapter {
 }
 
 /// Recursively walk a JSON value and replace `"context-mode hook"` with
-/// `"context-mode.cmd hook"` in every `"command"` string field (Windows only).
+/// the absolute path to `context-mode.exe` (Windows) or `context-mode` (Unix)
+/// so the shell can execute it directly.
 fn rewrite_hook_commands(value: &mut Value, plugin_root: &str) {
     let bin_path = PathBuf::from(plugin_root)
         .join(".claude-plugin")
         .join("bin")
-        .join("context-mode.cmd");
+        .join(if cfg!(windows) {
+            "context-mode.exe"
+        } else {
+            "context-mode"
+        });
     let replacement = format!(r#""{}" hook"#, bin_path.to_string_lossy());
 
     match value {
@@ -113,10 +118,10 @@ fn build_hook_script(hook_type: &str, plugin_root: &str) -> String {
         .join(".claude-plugin")
         .join("bin");
     if cfg!(windows) {
-        let cmd_path = bin_dir.join("context-mode.cmd");
+        let exe_path = bin_dir.join("context-mode.exe");
         format!(
             "@echo off\n\"{}\" hook claude-code {} %*\n",
-            cmd_path.to_string_lossy(),
+            exe_path.to_string_lossy(),
             hook_type
         )
     } else {
@@ -153,8 +158,8 @@ impl ClaudeCodeAdapter {
             .read_settings()?
             .unwrap_or_else(|| serde_json::json!({}));
 
-        // On Windows, rewrite "context-mode hook" -> absolute path to context-mode.cmd in all
-        // command strings so shells resolve the binary directly.
+        // On Windows, rewrite "context-mode hook" -> absolute path to context-mode.exe
+        // so shells (including Git Bash) can execute the binary directly.
         let mut hooks = hooks.clone();
         if cfg!(windows) {
             rewrite_hook_commands(&mut hooks, plugin_root);

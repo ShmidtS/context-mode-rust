@@ -1,6 +1,6 @@
 {
   "name": "context-mode-rust",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "MCP server and plugin that solves context window flooding. Exposes 29 MCP tools across 8 categories: core execution (execute, execute_file, batch_execute), knowledge base (index, search), administration (fetch_and_index, stats, doctor, upgrade, purge, insight, connector_list, connector_add, connector_sync), semantic search (semantic_search, index_embeddings, context_pack), vault graph (vault_index, vault_graph, graph_analyze), code analysis (dead_code, complexity, dep_graph), and local code index (local_index, local_search, local_status, local_repos, local_watch, local_unwatch). Supports 11 sandboxed languages, 12 IDE platforms, and 12 skills.",
   "author": {
     "name": "ShmidtS",

@@ -11,7 +11,7 @@ const EXT = IS_WIN ? '.exe' : '';
 const BIN_NAME = `context-mode-server${EXT}`;
 const CLI_BIN_NAME = `context-mode${EXT}`;
 const INSIGHT_BIN_NAME = `context-mode-insight${EXT}`;
-const VERSION = '1.3.2';
+const VERSION = '1.3.3';
 const HOOK_TYPES = ['posttooluse', 'pretooluse', 'precompact', 'sessionstart', 'userpromptsubmit'];
 
 function log(...args) {
@@ -113,9 +113,9 @@ function installHooks(cliPath) {
     const hooksDir = join(homedir(), '.claude', 'hooks');
     mkdirSync(hooksDir, { recursive: true });
 
-    // On Windows, use .cmd wrapper from plugin bin dir with absolute path
+    // On Windows, use the .exe directly so Git Bash can execute it.
     const pluginBinDir = join(PLUGIN_ROOT, '.claude-plugin', 'bin');
-    const cliCmd = IS_WIN ? join(pluginBinDir, 'context-mode.cmd') : cliPath;
+    const cliCmd = IS_WIN ? join(pluginBinDir, 'context-mode.exe') : cliPath;
 
     for (const hookType of HOOK_TYPES) {
       const hookPath = join(hooksDir, `${hookType}${IS_WIN ? '.cmd' : '.sh'}`);
@@ -161,10 +161,10 @@ function installSettingsHooks() {
       }
     }
 
-    // On Windows, rewrite commands to use absolute path to context-mode.cmd
-    // so shells resolve the binary directly rather than searching PATH.
+    // On Windows, rewrite commands to use absolute path to context-mode.exe
+    // so shells (including Git Bash) can execute the binary directly.
     const binDir = join(PLUGIN_ROOT, '.claude-plugin', 'bin');
-    const cliCmd = IS_WIN ? join(binDir, 'context-mode.cmd') : join(binDir, 'context-mode');
+    const cliCmd = IS_WIN ? join(binDir, 'context-mode.exe') : join(binDir, 'context-mode');
     const replacement = `"${cliCmd}" hook`;
 
     function rewriteCommands(obj) {
