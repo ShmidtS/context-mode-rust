@@ -11,7 +11,7 @@ const EXT = IS_WIN ? '.exe' : '';
 const BIN_NAME = `context-mode-server${EXT}`;
 const CLI_BIN_NAME = `context-mode${EXT}`;
 const INSIGHT_BIN_NAME = `context-mode-insight${EXT}`;
-const VERSION = '1.3.1';
+const VERSION = '1.3.2';
 const HOOK_TYPES = ['posttooluse', 'pretooluse', 'precompact', 'sessionstart', 'userpromptsubmit'];
 
 function log(...args) {
@@ -113,10 +113,9 @@ function installHooks(cliPath) {
     const hooksDir = join(homedir(), '.claude', 'hooks');
     mkdirSync(hooksDir, { recursive: true });
 
-    // On Windows, use .cmd wrapper instead of direct .exe path
-    const binDir = dirname(cliPath);
-    removeUnixShimsOnWindows(binDir);
-    const cliCmd = IS_WIN ? join(binDir, 'context-mode.cmd') : cliPath;
+    // On Windows, use .cmd wrapper from plugin bin dir with absolute path
+    const pluginBinDir = join(PLUGIN_ROOT, '.claude-plugin', 'bin');
+    const cliCmd = IS_WIN ? join(pluginBinDir, 'context-mode.cmd') : cliPath;
 
     for (const hookType of HOOK_TYPES) {
       const hookPath = join(hooksDir, `${hookType}${IS_WIN ? '.cmd' : '.sh'}`);
@@ -162,6 +161,33 @@ function installSettingsHooks() {
       }
     }
 
+    // On Windows, rewrite commands to use absolute path to context-mode.cmd
+    // so shells resolve the binary directly rather than searching PATH.
+    const binDir = join(PLUGIN_ROOT, '.claude-plugin', 'bin');
+    const cliCmd = IS_WIN ? join(binDir, 'context-mode.cmd') : join(binDir, 'context-mode');
+    const replacement = `"${cliCmd}" hook`;
+
+    function rewriteCommands(obj) {
+      if (Array.isArray(obj)) {
+        for (const item of obj) rewriteCommands(item);
+      } else if (obj && typeof obj === 'object') {
+        for (const key of Object.keys(obj)) {
+          if (key === 'command' && typeof obj[key] === 'string' && IS_WIN) {
+            obj[key] = obj[key].replace(/context-mode hook/g, replacement);
+          } else {
+            rewriteCommands(obj[key]);
+          }
+        }
+      }
+    }
+    rewriteCommands(hooksJson.hooks);
+
+    // Skip write if hooks are already identical
+    if (settings.hooks && JSON.stringify(settings.hooks) === JSON.stringify(hooksJson.hooks)) {
+      log('Hooks already up to date in', settingsPath);
+      return;
+    }
+
     // Backup existing settings before mutation
     if (existsSync(settingsPath)) {
       const backupPath = settingsPath + '.bak';
@@ -171,23 +197,6 @@ function installSettingsHooks() {
         log('Warning: could not create settings backup:', e.message);
       }
     }
-
-    // On Windows, rewrite commands to use context-mode.cmd instead of context-mode
-    // so that shells resolve the .cmd wrapper rather than the extension-less bash script.
-    function rewriteCommands(obj) {
-      if (Array.isArray(obj)) {
-        for (const item of obj) rewriteCommands(item);
-      } else if (obj && typeof obj === 'object') {
-        for (const key of Object.keys(obj)) {
-          if (key === 'command' && typeof obj[key] === 'string' && IS_WIN) {
-            obj[key] = obj[key].replace(/context-mode hook/g, 'context-mode.cmd hook');
-          } else {
-            rewriteCommands(obj[key]);
-          }
-        }
-      }
-    }
-    rewriteCommands(hooksJson.hooks);
 
     // Merge canonical context-mode hooks into settings
     settings.hooks = hooksJson.hooks;
