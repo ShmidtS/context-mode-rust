@@ -67,7 +67,11 @@ fn check_claude_code_settings_hooks() -> Result<()> {
                         hooks.iter().any(|hook| {
                             hook.get("command")
                                 .and_then(|c| c.as_str())
-                                .map(|s| s.contains("context-mode hook claude-code"))
+                                .map(|s| {
+                                    s.contains("context-mode")
+                                        && s.contains("hook")
+                                        && s.contains("claude-code")
+                                })
                                 .unwrap_or(false)
                         })
                     })

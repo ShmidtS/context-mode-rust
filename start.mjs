@@ -11,7 +11,7 @@ const EXT = IS_WIN ? '.exe' : '';
 const BIN_NAME = `context-mode-server${EXT}`;
 const CLI_BIN_NAME = `context-mode${EXT}`;
 const INSIGHT_BIN_NAME = `context-mode-insight${EXT}`;
-const VERSION = '1.3.4';
+const VERSION = '1.3.5';
 const HOOK_TYPES = ['posttooluse', 'pretooluse', 'precompact', 'sessionstart', 'userpromptsubmit'];
 
 function log(...args) {
@@ -163,8 +163,11 @@ function installSettingsHooks() {
 
     // On Windows, rewrite commands to use absolute path to context-mode.exe
     // so shells (including Git Bash) can execute the binary directly.
+    // Forward slashes avoid backslash-escaping issues in bash double quotes.
     const binDir = join(PLUGIN_ROOT, '.claude-plugin', 'bin');
-    const cliCmd = IS_WIN ? join(binDir, 'context-mode.exe') : join(binDir, 'context-mode');
+    const cliCmd = IS_WIN
+      ? join(binDir, 'context-mode.exe').replace(/\\/g, '/')
+      : join(binDir, 'context-mode');
     const replacement = `"${cliCmd}" hook`;
 
     function rewriteCommands(obj) {

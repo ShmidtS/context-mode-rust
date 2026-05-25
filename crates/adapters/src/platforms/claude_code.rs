@@ -101,7 +101,14 @@ fn rewrite_hook_commands(value: &mut Value, plugin_root: &str) {
         } else {
             "context-mode"
         });
-    let replacement = format!(r#""{}" hook"#, bin_path.to_string_lossy());
+    // Use forward slashes on Windows so bash does not interpret backslashes
+    // as escape sequences inside double-quoted strings.
+    let bin_path_str = if cfg!(windows) {
+        bin_path.to_string_lossy().replace('\\', "/")
+    } else {
+        bin_path.to_string_lossy().to_string()
+    };
+    let replacement = format!(r#""{}" hook"#, bin_path_str);
 
     match value {
         Value::Object(map) => {
