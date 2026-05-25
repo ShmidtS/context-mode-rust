@@ -253,10 +253,11 @@ pub fn update_job_status(
     completed_at: Option<f64>,
     error: Option<&str>,
     nodes_indexed: Option<i64>,
+    edges_indexed: Option<i64>,
 ) -> Result<()> {
     conn.execute(
-        "UPDATE jobs SET status = ?1, completed_at = ?2, error = ?3, nodes_indexed = ?4 WHERE id = ?5",
-        rusqlite::params![status, completed_at, error, nodes_indexed, id],
+        "UPDATE jobs SET status = ?1, completed_at = ?2, error = ?3, nodes_indexed = ?4, edges_indexed = ?5 WHERE id = ?6",
+        rusqlite::params![status, completed_at, error, nodes_indexed, edges_indexed, id],
     )?;
     Ok(())
 }

@@ -127,7 +127,10 @@ fn build_shell_command(runtime: &Option<String>, file_path: &str) -> Vec<String>
         vec![
             rt.clone(),
             "-c".to_string(),
-            format!("source {}", shell_quote(file_path)),
+            format!(
+                "export PATH='/usr/bin:$PATH'; source {}",
+                shell_quote(file_path)
+            ),
         ]
     } else {
         vec![rt.clone(), file_path.to_string()]

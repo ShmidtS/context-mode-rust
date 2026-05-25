@@ -105,6 +105,7 @@ impl LocalIndexer {
             "completed",
             Some(completed_at),
             None,
+            Some(files_indexed as i64),
             Some(chunks_indexed as i64),
         )?;
 

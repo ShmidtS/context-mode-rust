@@ -138,9 +138,9 @@ impl ClaudeCodeAdapter {
         // Backup existing settings
         let _ = self.backup_settings();
 
-        let mut settings = self.read_settings()?.unwrap_or_else(|| {
-            serde_json::json!({})
-        });
+        let mut settings = self
+            .read_settings()?
+            .unwrap_or_else(|| serde_json::json!({}));
 
         // On Windows, rewrite "context-mode hook" -> "context-mode.cmd hook" in all
         // command strings so shells resolve the .cmd wrapper, not the extension-less bash script.

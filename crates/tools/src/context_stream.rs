@@ -1,4 +1,5 @@
 use anyhow::Result;
+use context_mode_core::local_searcher::LocalSearcher;
 use context_mode_search::VectorStore;
 use context_mode_store::{SearchMode, SearchResult, SourceMatchMode};
 use serde_json::{Value, json};
@@ -62,8 +63,14 @@ pub async fn ctx_context_pack(params: Value) -> Result<Value> {
         .or_else(|| params.get("tokenBudget"))
         .and_then(|v| v.as_u64())
         .unwrap_or(4000) as usize;
-    let store = crate::store_util::open_existing_store()?;
-    let mut results = store.search(query, 50, None, SearchMode::Or, None, SourceMatchMode::Like)?;
+
+    let mut results = match crate::store_util::open_existing_store() {
+        Ok(store) => store.search(query, 50, None, SearchMode::Or, None, SourceMatchMode::Like)?,
+        Err(_) => {
+            let searcher = LocalSearcher::open(None)?;
+            searcher.search(query, None, 50)?
+        }
+    };
     results.sort_by(|a, b| a.rank.total_cmp(&b.rank));
 
     let mut packed = Vec::new();

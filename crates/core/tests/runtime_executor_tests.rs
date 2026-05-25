@@ -61,7 +61,14 @@ fn build_command_uses_language_specific_runtime_arguments() {
     );
     let shell_command = build_command(&runtimes, Language::Shell, "script.sh");
     if cfg!(windows) {
-        assert_eq!(shell_command, vec!["bash", "-c", "source 'script.sh'"]);
+        assert_eq!(
+            shell_command,
+            vec![
+                "bash",
+                "-c",
+                "export PATH='/usr/bin:$PATH'; source 'script.sh'"
+            ]
+        );
     } else {
         assert_eq!(shell_command, vec!["bash", "script.sh"]);
     }

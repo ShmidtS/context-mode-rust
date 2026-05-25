@@ -52,7 +52,11 @@ pub fn run() -> Result<()> {
             .unwrap_or_else(|_| PathBuf::from("."))
             .join(".claude-plugin")
             .join("bin");
-        for name in ["context-mode", "context-mode-server", "context-mode-insight"] {
+        for name in [
+            "context-mode",
+            "context-mode-server",
+            "context-mode-insight",
+        ] {
             let shim = bin_dir.join(name);
             if shim.exists() {
                 if let Ok(meta) = std::fs::metadata(&shim) {

@@ -39,7 +39,7 @@ fn format_search_tokens(tokens: Vec<String>, mode: SearchMode, empty_fallback: &
 }
 
 pub fn sanitize_query(query: &str, mode: SearchMode) -> String {
-    let re = Regex::new(r#"['"(){}\[\]\*:\^~]"#).expect("valid sanitize regex");
+    let re = Regex::new("['\\[\\]\"(){}*.:^~.]").expect("valid sanitize regex");
     let cleaned = re.replace_all(query, " ");
     let tokens = dedupe_tokens(
         cleaned
@@ -52,7 +52,7 @@ pub fn sanitize_query(query: &str, mode: SearchMode) -> String {
 }
 
 pub fn sanitize_trigram_query(query: &str, mode: SearchMode) -> String {
-    let re = Regex::new(r#"["'(){}\[\]\*:\^~]"#).expect("valid trigram sanitize regex");
+    let re = Regex::new("[\"'\\[\\](){}*.:^~.]").expect("valid trigram sanitize regex");
     let cleaned = re.replace_all(query, "").trim().to_string();
     if cleaned.len() < 3 {
         return String::new();

@@ -102,19 +102,29 @@ pub async fn ctx_doctor() -> anyhow::Result<serde_json::Value> {
                 Ok(raw) => match serde_json::from_str::<serde_json::Value>(&raw) {
                     Ok(settings) => {
                         if let Some(hooks) = settings.get("hooks") {
-                            let has_context_mode = hooks.get("PostToolUse")
+                            let has_context_mode = hooks
+                                .get("PostToolUse")
                                 .and_then(|p| p.as_array())
-                                .map(|arr| arr.iter().any(|entry| {
-                                    entry.get("hooks")
-                                        .and_then(|h| h.as_array())
-                                        .map(|hooks| hooks.iter().any(|hook| {
-                                            hook.get("command")
-                                                .and_then(|c| c.as_str())
-                                                .map(|s| s.contains("context-mode hook claude-code"))
-                                                .unwrap_or(false)
-                                        }))
-                                        .unwrap_or(false)
-                                }))
+                                .map(|arr| {
+                                    arr.iter().any(|entry| {
+                                        entry
+                                            .get("hooks")
+                                            .and_then(|h| h.as_array())
+                                            .map(|hooks| {
+                                                hooks.iter().any(|hook| {
+                                                    hook.get("command")
+                                                        .and_then(|c| c.as_str())
+                                                        .map(|s| {
+                                                            s.contains(
+                                                                "context-mode hook claude-code",
+                                                            )
+                                                        })
+                                                        .unwrap_or(false)
+                                                })
+                                            })
+                                            .unwrap_or(false)
+                                    })
+                                })
                                 .unwrap_or(false);
                             if has_context_mode {
                                 checks.push(format!(
@@ -157,7 +167,8 @@ pub async fn ctx_doctor() -> anyhow::Result<serde_json::Value> {
             ));
         }
     } else {
-        checks.push("Claude Code settings hooks: UNKNOWN (could not determine home dir)".to_string());
+        checks
+            .push("Claude Code settings hooks: UNKNOWN (could not determine home dir)".to_string());
     }
 
     checks.push(String::new());
