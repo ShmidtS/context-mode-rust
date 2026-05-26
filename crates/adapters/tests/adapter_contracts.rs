@@ -87,6 +87,7 @@ fn context_mode_hook_checker_matches_dispatcher_command() {
         hooks: vec![HookCommand {
             hook_type: "command".to_string(),
             command: "context-mode hook claude-code pretooluse".to_string(),
+            async_flag: Some(true),
         }],
     };
 
@@ -111,6 +112,7 @@ fn shared_helpers_normalize_source_and_upsert_hooks() {
         hooks: vec![HookCommand {
             hook_type: "command".to_string(),
             command: "old pre-tool-use.js".to_string(),
+            async_flag: Some(true),
         }],
     };
     let replacement = HookEntry {
@@ -118,6 +120,7 @@ fn shared_helpers_normalize_source_and_upsert_hooks() {
         hooks: vec![HookCommand {
             hook_type: "command".to_string(),
             command: "new pre-tool-use.js".to_string(),
+            async_flag: None,
         }],
     };
 

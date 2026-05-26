@@ -170,6 +170,8 @@ pub struct HookCommand {
     #[serde(rename = "type")]
     pub hook_type: String,
     pub command: String,
+    #[serde(rename = "async", skip_serializing_if = "Option::is_none")]
+    pub async_flag: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

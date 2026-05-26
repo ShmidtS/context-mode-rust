@@ -29,10 +29,7 @@ impl HookAdapter for ClaudeCodeAdapter {
                 let path = hooks_dir.join(format!("{hook_type}.{ext}"));
                 if path.exists() {
                     let _ = fs::remove_file(&path);
-                    installed.push(format!(
-                        "Removed legacy hook file {}",
-                        path.display()
-                    ));
+                    installed.push(format!("Removed legacy hook file {}", path.display()));
                 }
             }
         }
@@ -130,7 +127,6 @@ fn rewrite_hook_commands(value: &mut Value, plugin_root: &str) {
         _ => {}
     }
 }
-
 
 impl ClaudeCodeAdapter {
     fn install_settings_hooks(&self, plugin_root: &str) -> Result<Vec<String>, AdapterError> {

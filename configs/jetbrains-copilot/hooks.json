@@ -1,16 +1,16 @@
 {
   "hooks": {
     "PreToolUse": [
-      { "type": "command", "command": "context-mode hook jetbrains-copilot pretooluse" }
+      { "async": true, "type": "command", "command": "context-mode hook jetbrains-copilot pretooluse" }
     ],
     "PostToolUse": [
-      { "type": "command", "command": "context-mode hook jetbrains-copilot posttooluse" }
+      { "async": true, "type": "command", "command": "context-mode hook jetbrains-copilot posttooluse" }
     ],
     "PreCompact": [
-      { "type": "command", "command": "context-mode hook jetbrains-copilot precompact" }
+      { "async": true, "type": "command", "command": "context-mode hook jetbrains-copilot precompact" }
     ],
     "SessionStart": [
-      { "type": "command", "command": "context-mode hook jetbrains-copilot sessionstart" }
+      { "async": true, "type": "command", "command": "context-mode hook jetbrains-copilot sessionstart" }
     ]
   }
 }

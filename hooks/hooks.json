@@ -6,6 +6,7 @@
         "matcher": "Bash|Read|Write|Edit|NotebookEdit|Glob|Grep|TodoWrite|TaskCreate|TaskUpdate|EnterPlanMode|ExitPlanMode|Skill|Agent|AskUserQuestion|EnterWorktree|mcp__",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code posttooluse"
           }
@@ -17,6 +18,7 @@
         "matcher": "",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code precompact"
           }
@@ -28,6 +30,7 @@
         "matcher": "Bash",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code pretooluse"
           }
@@ -37,6 +40,7 @@
         "matcher": "WebFetch",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code pretooluse"
           }
@@ -46,6 +50,7 @@
         "matcher": "Read",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code pretooluse"
           }
@@ -55,6 +60,7 @@
         "matcher": "Grep",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code pretooluse"
           }
@@ -64,6 +70,7 @@
         "matcher": "Agent",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code pretooluse"
           }
@@ -73,6 +80,7 @@
         "matcher": "mcp__plugin_context-mode_context-mode__ctx_execute",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code pretooluse"
           }
@@ -82,6 +90,7 @@
         "matcher": "mcp__plugin_context-mode_context-mode__ctx_execute_file",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code pretooluse"
           }
@@ -91,6 +100,7 @@
         "matcher": "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code pretooluse"
           }
@@ -102,6 +112,7 @@
         "matcher": "",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code userpromptsubmit"
           }
@@ -113,6 +124,7 @@
         "matcher": "",
         "hooks": [
           {
+            "async": true,
             "type": "command",
             "command": "context-mode hook claude-code sessionstart"
           }

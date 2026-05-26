@@ -1,16 +1,16 @@
 {
   "hooks": {
     "PreToolUse": [
-      { "type": "command", "command": "context-mode hook vscode-copilot pretooluse" }
+      { "async": true, "type": "command", "command": "context-mode hook vscode-copilot pretooluse" }
     ],
     "PostToolUse": [
-      { "type": "command", "command": "context-mode hook vscode-copilot posttooluse" }
+      { "async": true, "type": "command", "command": "context-mode hook vscode-copilot posttooluse" }
     ],
     "PreCompact": [
-      { "type": "command", "command": "context-mode hook vscode-copilot precompact" }
+      { "async": true, "type": "command", "command": "context-mode hook vscode-copilot precompact" }
     ],
     "SessionStart": [
-      { "type": "command", "command": "context-mode hook vscode-copilot sessionstart" }
+      { "async": true, "type": "command", "command": "context-mode hook vscode-copilot sessionstart" }
     ]
   }
 }

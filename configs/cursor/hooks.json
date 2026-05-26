@@ -3,17 +3,20 @@
   "hooks": {
     "preToolUse": [
       {
+        "async": true,
         "command": "context-mode hook cursor pretooluse",
         "matcher": "Shell|Read|Grep|WebFetch|mcp_web_fetch|mcp_fetch_tool|Task|MCP:ctx_execute|MCP:ctx_execute_file|MCP:ctx_batch_execute|MCP:ctx_index|MCP:ctx_search|MCP:ctx_fetch_and_index|MCP:ctx_stats|MCP:ctx_doctor|MCP:ctx_upgrade|MCP:ctx_purge|MCP:ctx_insight|MCP:ctx_semantic_search|MCP:ctx_index_embeddings|MCP:ctx_context_pack|MCP:ctx_vault_index|MCP:ctx_vault_graph|MCP:ctx_graph_analyze|MCP:ctx_dead_code|MCP:ctx_complexity|MCP:ctx_dep_graph|MCP:ctx_connector_list|MCP:ctx_connector_add|MCP:ctx_connector_sync|MCP:ctx_local_index|MCP:ctx_local_search|MCP:ctx_local_status|MCP:ctx_local_repos|MCP:ctx_local_watch|MCP:ctx_local_unwatch"
       }
     ],
     "postToolUse": [
       {
+        "async": true,
         "command": "context-mode hook cursor posttooluse"
       }
     ],
     "stop": [
       {
+        "async": true,
         "command": "context-mode hook cursor stop"
       }
     ]
