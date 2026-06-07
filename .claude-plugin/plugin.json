@@ -1,136 +1,31 @@
 {
   "name": "context-mode-rust",
   "version": "1.3.8",
-  "description": "Context window optimization for AI coding agents via Rust MCP server",
-  "license": "Elastic-2.0",
-  "author": "ShmidtS",
-  "homepage": "https://github.com/ShmidtS/context-mode-rust",
-  "mcpTools": [
-    "ctx_execute",
-    "ctx_execute_file",
-    "ctx_batch_execute",
-    "ctx_index",
-    "ctx_search",
-    "ctx_fetch_and_index",
-    "ctx_stats",
-    "ctx_doctor",
-    "ctx_upgrade",
-    "ctx_purge",
-    "ctx_insight",
-    "ctx_vault_graph",
-    "ctx_vault_index",
-    "ctx_complexity",
-    "ctx_dead_code",
-    "ctx_dep_graph",
-    "ctx_context_pack",
-    "ctx_local_index",
-    "ctx_local_search",
-    "ctx_connector_add",
-    "ctx_connector_sync",
-    "ctx_connector_list"
-  ],
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "**",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "context-mode-server",
-            "args": [
-              "hook",
-              "pretooluse"
-            ]
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "**",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "context-mode-server",
-            "args": [
-              "hook",
-              "posttooluse"
-            ]
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "context-mode-server",
-            "args": [
-              "hook",
-              "precompact"
-            ]
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "context-mode-server",
-            "args": [
-              "hook",
-              "userpromptsubmit"
-            ]
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "context-mode-server",
-            "args": [
-              "hook",
-              "sessionstart"
-            ]
-          }
-        ]
-      }
-    ]
+  "description": "MCP server that saves context window with session continuity. Sandboxed code execution in 11 languages, FTS5 knowledge base with BM25 ranking, and knowledge graph indexing.",
+  "author": {
+    "name": "ShmidtS",
+    "url": "https://github.com/ShmidtS"
   },
-  "commands": {
-    "ctx-stats": {
-      "type": "tool",
-      "tool": "ctx_stats"
-    },
-    "ctx-doctor": {
-      "type": "tool",
-      "tool": "ctx_doctor"
-    },
-    "ctx-index": {
-      "type": "tool",
-      "tool": "ctx_index"
-    },
-    "ctx-search": {
-      "type": "tool",
-      "tool": "ctx_search"
-    },
-    "ctx-upgrade": {
-      "type": "tool",
-      "tool": "ctx_upgrade"
-    },
-    "ctx-purge": {
-      "type": "tool",
-      "tool": "ctx_purge"
-    },
-    "ctx-insight": {
-      "type": "tool",
-      "tool": "ctx_insight"
+  "homepage": "https://github.com/ShmidtS/context-mode-rust#readme",
+  "repository": "https://github.com/ShmidtS/context-mode-rust",
+  "license": "Elastic-2.0",
+  "keywords": [
+    "mcp",
+    "context-window",
+    "sandbox",
+    "code-execution",
+    "fts5",
+    "bm25",
+    "semantic-search",
+    "vault",
+    "knowledge-graph",
+    "code-analysis"
+  ],
+  "mcpServers": {
+    "context-mode-rust": {
+      "command": "context-mode-server",
+      "args": []
     }
-  }
+  },
+  "skills": "../skills/"
 }
