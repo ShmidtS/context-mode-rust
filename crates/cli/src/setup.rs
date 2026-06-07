@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use context_mode_adapters::platforms::claude_code::ClaudeCodeAdapter;
@@ -69,7 +69,7 @@ fn resolve_plugin_root() -> PathBuf {
 
 /// Register the `context-mode-server` binary in the user's PATH so that
 /// Claude Code can invoke it from hooks and slash commands.
-fn register_context_mode_server_binary(plugin_root: &PathBuf) -> Result<Vec<String>> {
+fn register_context_mode_server_binary(plugin_root: &Path) -> Result<Vec<String>> {
     let mut results = Vec::new();
     let bin_dir = plugin_root.join(".claude-plugin").join("bin");
     let server_src = bin_dir.join(if cfg!(windows) {
