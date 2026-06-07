@@ -2,12 +2,6 @@ use crate::rrf::DEFAULT_RRF_K;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct HybridRankedId {
-    pub doc_id: String,
-    pub rank: usize,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HybridScore {
     pub doc_id: String,
@@ -24,8 +18,8 @@ pub fn rrf_score(rank: usize, k: f64) -> f64 {
 }
 
 pub fn hybrid_rrf(
-    fts5: &[HybridRankedId],
-    secondary: Option<&[HybridRankedId]>,
+    fts5: &[(String, usize)],
+    secondary: Option<&[(String, usize)]>,
     alpha: f64,
     k: f64,
 ) -> Vec<HybridScore> {
@@ -34,14 +28,23 @@ pub fn hybrid_rrf(
     let secondary_weight = if secondary.is_some() { alpha } else { 0.0 };
     let mut scores: HashMap<String, f64> = HashMap::new();
 
-    for item in fts5 {
-        *scores.entry(item.doc_id.clone()).or_insert(0.0) += bm25_weight * rrf_score(item.rank, k);
+    for (doc_id, rank) in fts5 {
+        let score = bm25_weight * rrf_score(*rank, k);
+        if let Some(existing) = scores.get_mut(doc_id) {
+            *existing += score;
+        } else {
+            scores.insert(doc_id.clone(), score);
+        }
     }
 
     if let Some(secondary) = secondary {
-        for item in secondary {
-            *scores.entry(item.doc_id.clone()).or_insert(0.0) +=
-                secondary_weight * rrf_score(item.rank, k);
+        for (doc_id, rank) in secondary {
+            let score = secondary_weight * rrf_score(*rank, k);
+            if let Some(existing) = scores.get_mut(doc_id) {
+                *existing += score;
+            } else {
+                scores.insert(doc_id.clone(), score);
+            }
         }
     }
 
@@ -63,24 +66,7 @@ pub fn hybrid_rrf_pairs(
     alpha: f64,
     k: f64,
 ) -> Vec<HybridScore> {
-    let fts5 = fts5
-        .iter()
-        .map(|(doc_id, rank)| HybridRankedId {
-            doc_id: doc_id.clone(),
-            rank: *rank,
-        })
-        .collect::<Vec<_>>();
-    let secondary = secondary.map(|items| {
-        items
-            .iter()
-            .map(|(doc_id, rank)| HybridRankedId {
-                doc_id: doc_id.clone(),
-                rank: *rank,
-            })
-            .collect::<Vec<_>>()
-    });
-
-    hybrid_rrf(&fts5, secondary.as_deref(), alpha, k)
+    hybrid_rrf(fts5, secondary, alpha, k)
 }
 
 #[cfg(test)]

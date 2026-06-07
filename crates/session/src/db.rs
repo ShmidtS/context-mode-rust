@@ -5,7 +5,6 @@ use crate::types::{
 };
 use context_mode_core::types::EventCategory;
 use rusqlite::{Connection, OptionalExtension, params};
-use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 const MAX_EVENTS_PER_SESSION: i64 = 1_000;
@@ -94,7 +93,10 @@ impl SessionDB {
                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                PRIMARY KEY (session_id, tool)
              );
-             CREATE INDEX IF NOT EXISTS idx_tool_calls_session ON tool_calls(session_id);",
+             CREATE INDEX IF NOT EXISTS idx_tool_calls_session ON tool_calls(session_id);
+             CREATE VIRTUAL TABLE IF NOT EXISTS session_events_fts USING fts5(
+               data, content='session_events', content_rowid='id'
+             );",
         )?;
         Ok(())
     }
@@ -164,7 +166,7 @@ impl SessionDB {
                     session_id,
                     event.event_type,
                     category_to_string(&event.category),
-                    event.priority,
+                    event.priority as i32,
                     event.data,
                     project_dir,
                     attribution_source,
@@ -188,19 +190,84 @@ impl SessionDB {
         events: &[SessionEvent],
         source_hook: &str,
     ) -> Result<()> {
-        for event in events {
-            self.insert_event(session_id, event, source_hook, None)?;
+        if events.is_empty() {
+            return Ok(());
         }
+
+        self.ensure_session(session_id, "")?;
+        let tx = self.conn.unchecked_transaction()?;
+
+        let count = self.get_event_count_tx(&tx, session_id)?;
+        let mut remaining = MAX_EVENTS_PER_SESSION.saturating_sub(count);
+
+        let mut insert_stmt = tx.prepare(
+            "INSERT INTO session_events
+             (session_id, type, category, priority, data, project_dir, attribution_source, attribution_confidence, source_hook, data_hash)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        )?;
+
+        let mut dup_check = tx.prepare(
+            "SELECT id FROM session_events
+             WHERE session_id = ?1 AND type = ?3 AND data_hash = ?4
+             ORDER BY id DESC LIMIT ?2",
+        )?;
+
+        let mut delete_oldest = tx.prepare(
+            "DELETE FROM session_events WHERE id = (
+               SELECT id FROM session_events WHERE session_id = ?1 ORDER BY priority ASC, id ASC LIMIT 1
+             )",
+        )?;
+
+        let mut update_meta = tx.prepare(
+            "UPDATE session_meta SET last_event_at = datetime('now'), event_count = event_count + 1 WHERE session_id = ?1",
+        )?;
+
+        for event in events {
+            let data_hash = hash_data(&event.data);
+            let dup: Option<i64> = dup_check
+                .query_row(
+                    params![session_id, DEDUP_WINDOW, event.event_type, data_hash],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            if dup.is_some() {
+                continue;
+            }
+            if remaining <= 0 {
+                delete_oldest.execute(params![session_id])?;
+            } else {
+                remaining -= 1;
+            }
+            insert_stmt.execute(params![
+                session_id,
+                event.event_type,
+                category_to_string(&event.category),
+                event.priority as i32,
+                event.data,
+                "",
+                "unknown",
+                0.0,
+                source_hook,
+                data_hash,
+            ])?;
+            update_meta.execute(params![session_id])?;
+        }
+
+        drop(insert_stmt);
+        drop(dup_check);
+        drop(delete_oldest);
+        drop(update_meta);
+        tx.commit()?;
         Ok(())
     }
 
     pub fn get_events(&self, session_id: &str, limit: Option<i64>) -> Result<Vec<StoredEvent>> {
         let sql = if limit.is_some() {
-            "SELECT * FROM session_events WHERE session_id = ?1 ORDER BY id ASC LIMIT ?2"
+            "SELECT id, session_id, type, category, priority, data, project_dir, attribution_source, attribution_confidence, source_hook, created_at, data_hash FROM session_events WHERE session_id = ?1 ORDER BY id ASC LIMIT ?2"
         } else {
-            "SELECT * FROM session_events WHERE session_id = ?1 ORDER BY id ASC"
+            "SELECT id, session_id, type, category, priority, data, project_dir, attribution_source, attribution_confidence, source_hook, created_at, data_hash FROM session_events WHERE session_id = ?1 ORDER BY id ASC"
         };
-        let mut stmt = self.conn.prepare(sql)?;
+        let mut stmt = self.conn.prepare_cached(sql)?;
         let rows = if let Some(limit) = limit {
             stmt.query_map(params![session_id, limit], row_to_stored_event)?
                 .collect::<std::result::Result<Vec<_>, _>>()?
@@ -216,8 +283,8 @@ impl SessionDB {
         session_id: &str,
         event_type: &str,
     ) -> Result<Vec<StoredEvent>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT * FROM session_events WHERE session_id = ?1 AND type = ?2 ORDER BY id ASC",
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT id, session_id, type, category, priority, data, project_dir, attribution_source, attribution_confidence, source_hook, created_at, data_hash FROM session_events WHERE session_id = ?1 AND type = ?2 ORDER BY id ASC",
         )?;
         Ok(stmt
             .query_map(params![session_id, event_type], row_to_stored_event)?
@@ -229,7 +296,7 @@ impl SessionDB {
         session_id: &str,
         min_priority: i32,
     ) -> Result<Vec<StoredEvent>> {
-        let mut stmt = self.conn.prepare("SELECT * FROM session_events WHERE session_id = ?1 AND priority >= ?2 ORDER BY priority DESC, id ASC")?;
+        let mut stmt = self.conn.prepare_cached("SELECT id, session_id, type, category, priority, data, project_dir, attribution_source, attribution_confidence, source_hook, created_at, data_hash FROM session_events WHERE session_id = ?1 AND priority >= ?2 ORDER BY priority DESC, id ASC")?;
         Ok(stmt
             .query_map(params![session_id, min_priority], row_to_stored_event)?
             .collect::<std::result::Result<Vec<_>, _>>()?)
@@ -262,18 +329,19 @@ impl SessionDB {
         project_dir: Option<&str>,
         source_hook: Option<&str>,
     ) -> Result<Vec<StoredEvent>> {
-        let like = format!("%{}%", query);
         let project = project_dir.unwrap_or("");
         let source = source_hook.unwrap_or("");
-        let mut stmt = self.conn.prepare(
-            "SELECT * FROM session_events
-             WHERE data LIKE ?1
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT id, session_id, type, category, priority, data, project_dir, attribution_source, attribution_confidence, source_hook, created_at, data_hash FROM session_events
+             WHERE id IN (
+               SELECT rowid FROM session_events_fts WHERE session_events_fts MATCH ?1
+             )
                AND (?2 = '' OR project_dir = ?2)
                AND (?3 = '' OR source_hook = ?3)
              ORDER BY id DESC LIMIT ?4",
         )?;
         Ok(stmt
-            .query_map(params![like, project, source, limit], row_to_stored_event)?
+            .query_map(params![query, project, source, limit], row_to_stored_event)?
             .collect::<std::result::Result<Vec<_>, _>>()?)
     }
 
@@ -377,7 +445,7 @@ impl SessionDB {
     }
 
     pub fn get_tool_call_stats(&self, session_id: &str) -> Result<ToolCallStats> {
-        let mut stmt = self.conn.prepare("SELECT tool, calls, bytes_returned FROM tool_calls WHERE session_id = ?1 ORDER BY calls DESC, tool ASC")?;
+        let mut stmt = self.conn.prepare_cached("SELECT tool, calls, bytes_returned FROM tool_calls WHERE session_id = ?1 ORDER BY calls DESC, tool ASC")?;
         let by_tool: Vec<ToolCallRow> = stmt
             .query_map(params![session_id], |row| {
                 Ok(ToolCallRow {
@@ -424,9 +492,8 @@ impl SessionDB {
 }
 
 fn hash_data(data: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(data.as_bytes());
-    hex::encode(hasher.finalize())[..16].to_uppercase()
+    let hash = xxhash_rust::xxh3::xxh3_64(data.as_bytes());
+    hash.to_string()
 }
 
 fn category_to_string(category: &EventCategory) -> String {
@@ -437,23 +504,62 @@ fn category_to_string(category: &EventCategory) -> String {
 }
 
 fn category_from_string(s: &str) -> EventCategory {
-    serde_json::from_value(serde_json::Value::String(s.to_string())).unwrap_or(EventCategory::Data)
+    match s {
+        "file" => EventCategory::File,
+        "rule" => EventCategory::Rule,
+        "cwd" => EventCategory::Cwd,
+        "error" => EventCategory::Error,
+        "git" => EventCategory::Git,
+        "task" => EventCategory::Task,
+        "plan" => EventCategory::Plan,
+        "env" => EventCategory::Env,
+        "skill" => EventCategory::Skill,
+        "constraint" => EventCategory::Constraint,
+        "subagent" => EventCategory::Subagent,
+        "mcp" => EventCategory::Mcp,
+        "mcp_tool_call" => EventCategory::McpToolCall,
+        "decision" => EventCategory::Decision,
+        "agent-finding" => EventCategory::AgentFinding,
+        "external-ref" => EventCategory::ExternalRef,
+        "blocked-on" => EventCategory::BlockedOn,
+        "data" => EventCategory::Data,
+        "error-resolution" => EventCategory::ErrorResolution,
+        "iteration-loop" => EventCategory::IterationLoop,
+        "intent" => EventCategory::Intent,
+        "role" => EventCategory::Role,
+        "prompt" => EventCategory::Prompt,
+        "user-prompt" => EventCategory::UserPrompt,
+        "openclaw" => EventCategory::Openclaw,
+        "pi" => EventCategory::Pi,
+        "tool" => EventCategory::Tool,
+        "config" => EventCategory::Config,
+        "test" => EventCategory::Test,
+        "compaction" => EventCategory::Compaction,
+        "rejected-approach" => EventCategory::RejectedApproach,
+        "session-resume" => EventCategory::SessionResume,
+        "status" => EventCategory::Status,
+        "deploy" => EventCategory::Deploy,
+        "log" => EventCategory::Log,
+        "latency" => EventCategory::Latency,
+        "permission" => EventCategory::Permission,
+        _ => EventCategory::Data,
+    }
 }
 
 fn row_to_stored_event(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredEvent> {
     Ok(StoredEvent {
-        id: row.get("id")?,
-        session_id: row.get("session_id")?,
-        event_type: row.get("type")?,
-        category: category_from_string(&row.get::<_, String>("category")?),
-        priority: row.get("priority")?,
-        data: row.get("data")?,
-        project_dir: row.get("project_dir")?,
-        attribution_source: row.get("attribution_source")?,
-        attribution_confidence: row.get("attribution_confidence")?,
-        source_hook: row.get("source_hook")?,
-        created_at: row.get("created_at")?,
-        data_hash: row.get("data_hash")?,
+        id: row.get(0)?,
+        session_id: row.get(1)?,
+        event_type: row.get(2)?,
+        category: category_from_string(&row.get::<_, String>(3)?),
+        priority: row.get(4)?,
+        data: row.get(5)?,
+        project_dir: row.get(6)?,
+        attribution_source: row.get(7)?,
+        attribution_confidence: row.get(8)?,
+        source_hook: row.get(9)?,
+        created_at: row.get(10)?,
+        data_hash: row.get(11)?,
     })
 }
 

@@ -40,6 +40,12 @@ impl HookAdapter for ClaudeCodeAdapter {
             Err(e) => installed.push(format!("Settings hooks install failed: {}", e)),
         }
 
+        // Install slash commands in settings.json
+        match self.install_slash_commands(plugin_root) {
+            Ok(mut slash_results) => installed.append(&mut slash_results),
+            Err(e) => installed.push(format!("Slash commands install failed: {}", e)),
+        }
+
         Ok(installed)
     }
 
@@ -66,8 +72,140 @@ impl HookAdapter for ClaudeCodeAdapter {
         Ok(removed)
     }
 
-    fn diagnostics(&self, _plugin_root: &str) -> Result<Vec<DiagnosticResult>, AdapterError> {
-        Ok(Vec::new())
+    fn diagnostics(&self, plugin_root: &str) -> Result<Vec<DiagnosticResult>, AdapterError> {
+        let mut results = Vec::new();
+        let settings = self.read_settings()?;
+        let settings_path = self.settings_path();
+
+        // Check if settings.json exists
+        results.push(DiagnosticResult {
+            check: "settings.json exists".to_string(),
+            status: if settings.is_some() {
+                DiagnosticStatus::Pass
+            } else {
+                DiagnosticStatus::Fail
+            },
+            message: if settings.is_some() {
+                format!("Settings file found at {}", settings_path.display())
+            } else {
+                format!("Settings file not found at {}", settings_path.display())
+            },
+            fix: if settings.is_some() {
+                None
+            } else {
+                Some(format!(
+                    "Run 'context-mode setup' to create {}",
+                    settings_path.display()
+                ))
+            },
+        });
+
+        // Check if hooks are configured
+        if let Some(settings) = &settings {
+            let hooks_present = settings.get("hooks").is_some();
+            results.push(DiagnosticResult {
+                check: "hooks configured in settings.json".to_string(),
+                status: if hooks_present {
+                    DiagnosticStatus::Pass
+                } else {
+                    DiagnosticStatus::Warn
+                },
+                message: if hooks_present {
+                    "Hooks configured in settings.json".to_string()
+                } else {
+                    "No hooks configured in settings.json".to_string()
+                },
+                fix: if hooks_present {
+                    None
+                } else {
+                    Some("Run 'context-mode setup' to install hooks".to_string())
+                },
+            });
+        }
+
+        // Check if context-mode binary is accessible
+        let bin_name = if cfg!(windows) {
+            "context-mode.exe"
+        } else {
+            "context-mode"
+        };
+        let bin_path = PathBuf::from(plugin_root)
+            .join(".claude-plugin")
+            .join("bin")
+            .join(bin_name);
+        results.push(DiagnosticResult {
+            check: "context-mode binary accessible".to_string(),
+            status: if bin_path.exists() {
+                DiagnosticStatus::Pass
+            } else {
+                DiagnosticStatus::Warn
+            },
+            message: if bin_path.exists() {
+                format!("Binary found at {}", bin_path.display())
+            } else {
+                format!("Binary not found at {}", bin_path.display())
+            },
+            fix: if bin_path.exists() {
+                None
+            } else {
+                Some("Build the project with 'cargo build --release'".to_string())
+            },
+        });
+
+        // Check if context-mode-server binary is accessible
+        let server_name = if cfg!(windows) {
+            "context-mode-server.exe"
+        } else {
+            "context-mode-server"
+        };
+        let server_path = PathBuf::from(plugin_root)
+            .join(".claude-plugin")
+            .join("bin")
+            .join(server_name);
+        results.push(DiagnosticResult {
+            check: "context-mode-server binary accessible".to_string(),
+            status: if server_path.exists() {
+                DiagnosticStatus::Pass
+            } else {
+                DiagnosticStatus::Warn
+            },
+            message: if server_path.exists() {
+                format!("Server binary found at {}", server_path.display())
+            } else {
+                format!("Server binary not found at {}", server_path.display())
+            },
+            fix: if server_path.exists() {
+                None
+            } else {
+                Some("Build the project with 'cargo build --release'".to_string())
+            },
+        });
+
+        // Check if slash commands are registered
+        if let Some(settings) = &settings {
+            let commands = settings.get("customCommands");
+            let slash_present = commands.is_some();
+            results.push(DiagnosticResult {
+                check: "slash commands registered".to_string(),
+                status: if slash_present {
+                    DiagnosticStatus::Pass
+                } else {
+                    DiagnosticStatus::Warn
+                },
+                message: if slash_present {
+                    "Slash commands registered in settings.json".to_string()
+                } else {
+                    "No slash commands registered in settings.json".to_string()
+                },
+                fix: if slash_present {
+                    None
+                } else {
+                    Some("Run 'context-mode setup' to register slash commands".to_string())
+                },
+            });
+        }
+
+        Ok(results)
     }
 
     fn settings_path(&self) -> PathBuf {
@@ -180,6 +318,102 @@ impl ClaudeCodeAdapter {
 
         Ok(vec![format!(
             "Installed context-mode hooks in {}",
+            self.settings_path().display()
+        )])
+    }
+
+    fn install_slash_commands(&self, plugin_root: &str) -> Result<Vec<String>, AdapterError> {
+        let mut settings = self
+            .read_settings()?
+            .unwrap_or_else(|| serde_json::json!({}));
+
+        let bin_path = PathBuf::from(plugin_root)
+            .join(".claude-plugin")
+            .join("bin")
+            .join(if cfg!(windows) {
+                "context-mode.exe"
+            } else {
+                "context-mode"
+            });
+        let bin_path_str = if cfg!(windows) {
+            bin_path.to_string_lossy().replace('\\', "/")
+        } else {
+            bin_path.to_string_lossy().to_string()
+        };
+
+        let commands = serde_json::json!({
+            "ctx-stats": {
+                "type": "command",
+                "command": format!(r#"{}"#, bin_path_str),
+                "args": ["stats"]
+            },
+            "ctx-doctor": {
+                "type": "command",
+                "command": format!(r#"{}"#, bin_path_str),
+                "args": ["doctor"]
+            },
+            "ctx-upgrade": {
+                "type": "command",
+                "command": format!(r#"{}"#, bin_path_str),
+                "args": ["upgrade"]
+            },
+            "ctx-purge": {
+                "type": "command",
+                "command": format!(r#"{}"#, bin_path_str),
+                "args": ["purge", "--confirm"]
+            },
+            "ctx-search": {
+                "type": "command",
+                "command": format!(r#"{}"#, bin_path_str),
+                "args": ["search"]
+            },
+            "ctx-insight": {
+                "type": "command",
+                "command": format!(r#"{}"#, bin_path_str),
+                "args": ["insight"]
+            }
+        });
+
+        // Check if customCommands already matches
+        let mut existing = settings
+            .get("customCommands")
+            .cloned()
+            .unwrap_or_else(|| serde_json::json!({}));
+        let existing_obj = existing.as_object_mut().unwrap_or_else(|| {
+            settings
+                .as_object_mut()
+                .unwrap()
+                .insert("customCommands".to_string(), serde_json::json!({}));
+            settings["customCommands"].as_object_mut().unwrap()
+        });
+        let commands_obj = commands.as_object().unwrap();
+
+        let mut changed = false;
+        for (key, value) in commands_obj {
+            if existing_obj.get(key) != Some(value) {
+                existing_obj.insert(key.clone(), value.clone());
+                changed = true;
+            }
+        }
+
+        if !changed {
+            return Ok(vec![format!(
+                "Slash commands already up to date in {}",
+                self.settings_path().display()
+            )]);
+        }
+
+        // Backup existing settings before mutating
+        let _ = self.backup_settings();
+
+        if let Some(obj) = settings.as_object_mut() {
+            obj.insert("customCommands".to_string(), existing);
+        }
+
+        self.write_settings(&settings)?;
+
+        Ok(vec![format!(
+            "Installed context-mode slash commands in {}",
             self.settings_path().display()
         )])
     }

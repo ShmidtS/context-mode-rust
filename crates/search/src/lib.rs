@@ -12,7 +12,7 @@ pub use auto_memory::{
     extract_auto_memory_with_options, results_to_auto_memory,
 };
 pub use context_packer::{ContextPacker, PackOptions, PackResult, PackedItem, pack_search_results};
-pub use hybrid::{HybridRankedId, HybridScore, hybrid_rrf, hybrid_rrf_pairs, rrf_score};
+pub use hybrid::{HybridScore, hybrid_rrf, hybrid_rrf_pairs, rrf_score};
 pub use query::{
     QueryClassification, classify_query, is_symbol_like, split_identifier, split_query_identifiers,
 };

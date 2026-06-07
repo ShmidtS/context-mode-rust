@@ -128,6 +128,8 @@ impl PolyglotExecutor {
             let _ = tokio::fs::rename(log_dir.join("pending.out"), path).await;
         }
 
+        // Deliberately persist the temp dir across the background process's lifetime.
+        // The script source file is kept here; the OS will reclaim it on reboot.
         let _ = tmp_dir.keep();
         if let Some(timeout_ms) = timeout_ms {
             if tokio::time::timeout(Duration::from_millis(timeout_ms), child.wait())
@@ -171,15 +173,15 @@ async fn execute_foreground(
     let (tx, mut rx) = mpsc::channel::<(bool, Vec<u8>)>(16);
 
     let stdout_tx = tx.clone();
-    tokio::spawn(async move {
+    let stdout_handle = tokio::spawn(async move {
         read_stream(stdout_pipe, true, stdout_tx).await;
     });
-    tokio::spawn(async move {
+    let stderr_handle = tokio::spawn(async move {
         read_stream(stderr_pipe, false, tx).await;
     });
 
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
+    let mut stdout = Vec::with_capacity(hard_cap_bytes);
+    let mut stderr = Vec::with_capacity(hard_cap_bytes);
     // Default timeout: 30 seconds if not specified
     let effective_timeout = timeout_ms.unwrap_or(30_000);
     let mut timeout_sleep = Some(Box::pin(tokio::time::sleep(Duration::from_millis(
@@ -220,13 +222,18 @@ async fn execute_foreground(
         let _ = tokio::time::timeout(Duration::from_secs(2), child.wait()).await;
     }
 
+    stdout_handle.abort();
+    stderr_handle.abort();
+
     while let Ok((is_stdout, chunk)) = rx.try_recv() {
         append_capped(&mut stdout, &mut stderr, is_stdout, &chunk, hard_cap_bytes);
     }
 
     Ok(ExecResult {
-        stdout: String::from_utf8_lossy(&stdout).to_string(),
-        stderr: String::from_utf8_lossy(&stderr).to_string(),
+        stdout: String::from_utf8(stdout)
+            .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).to_string()),
+        stderr: String::from_utf8(stderr)
+            .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).to_string()),
         exit_code: status_code.unwrap_or(-1),
         timed_out,
         backgrounded: false,
@@ -244,7 +251,9 @@ where
         match reader.read(&mut buf).await {
             Ok(0) | Err(_) => break,
             Ok(n) => {
-                if tx.send((is_stdout, buf[..n].to_vec())).await.is_err() {
+                let mut chunk = Vec::with_capacity(n);
+                chunk.extend_from_slice(&buf[..n]);
+                if tx.send((is_stdout, chunk)).await.is_err() {
                     break;
                 }
             }

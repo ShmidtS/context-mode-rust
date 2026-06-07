@@ -109,32 +109,34 @@ pub fn fuse_search_results(
         })
         .collect::<Vec<_>>();
 
-    fuse_unified_results(vec![fts, semantic], options)
-        .into_iter()
-        .map(SearchResult::from)
-        .collect()
+    let unified = fuse_unified_results(vec![fts, semantic], options);
+    let mut result = Vec::with_capacity(unified.len());
+    for item in unified {
+        result.push(SearchResult::from(item));
+    }
+    result
 }
 
 pub fn fuse_unified_results(
     result_lists: Vec<Vec<UnifiedSearchResult>>,
     options: UnifiedSearchOptions,
 ) -> Vec<UnifiedSearchResult> {
-    let mut fused = reciprocal_rank_fuse(&result_lists, UnifiedSearchResult::key, options.rrf_k)
-        .into_iter()
-        .map(|scored| {
-            let mut item = scored.item;
-            item.rank = -scored.rrf_score;
-            item.match_layer = Some(MatchLayer::Hybrid);
-            item
-        })
-        .collect::<Vec<_>>();
-
-    fused.truncate(options.limit);
-    fused
+    let fused = reciprocal_rank_fuse(&result_lists, UnifiedSearchResult::key, options.rrf_k);
+    let mut result = Vec::with_capacity(fused.len().min(options.limit));
+    for scored in fused {
+        if result.len() >= options.limit {
+            break;
+        }
+        let mut item = scored.item;
+        item.rank = -scored.rrf_score;
+        item.match_layer = Some(MatchLayer::Hybrid);
+        result.push(item);
+    }
+    result
 }
 
 pub fn estimate_tokens(text: &str) -> usize {
-    (text.chars().count() as f64 / 3.2).ceil() as usize
+    (text.len() as f64 / 4.0).ceil() as usize
 }
 
 #[cfg(test)]

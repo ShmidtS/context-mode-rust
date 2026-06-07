@@ -7,13 +7,14 @@ use crate::path_utils::{
 use crate::resolver::resolve_link;
 use crate::types::{LinkType, VaultConfidence, VaultEdgeInput, VaultNodeInput};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::sync::OnceLock;
 use thiserror::Error;
 use walkdir::{DirEntry, WalkDir};
+use xxhash_rust::xxh3::xxh3_64;
 
 #[derive(Debug, Error)]
 pub enum IndexerError {
@@ -55,6 +56,12 @@ const DEFAULT_EXCLUDE_DIRS: &[&str] = &[
     ".claude-plugin",
     ".pi",
 ];
+
+fn default_exclude_dirs_set() -> &'static HashSet<String> {
+    static SET: OnceLock<HashSet<String>> = OnceLock::new();
+    SET.get_or_init(|| DEFAULT_EXCLUDE_DIRS.iter().map(|s| s.to_string()).collect())
+}
+
 const CODE_EXTENSIONS: &[&str] = &[
     ".ts", ".js", ".mjs", ".cjs", ".py", ".pyi", ".pyw", ".go", ".rs", ".java", ".kt", ".kts",
     ".scala", ".sc", ".swift", ".c", ".h", ".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".cs", ".rb",
@@ -84,36 +91,51 @@ fn should_skip(entry: &DirEntry, exclude_dirs: &HashSet<String>) -> bool {
         && exclude_dirs.contains(&entry.file_name().to_string_lossy().to_string())
 }
 
-fn collect_source_files(vault_root: &Path, opts: &IndexOpts) -> Result<Vec<String>> {
+fn collect_source_files(
+    vault_root: &Path,
+    opts: &IndexOpts,
+) -> Result<(Vec<String>, Vec<String>, Vec<String>)> {
     let exclude_dirs: HashSet<String> = opts
         .exclude_patterns
         .clone()
-        .unwrap_or_else(|| DEFAULT_EXCLUDE_DIRS.iter().map(|s| s.to_string()).collect())
+        .unwrap_or_else(|| default_exclude_dirs_set().iter().cloned().collect())
         .into_iter()
         .collect();
     let walker = WalkDir::new(vault_root)
         .follow_links(false)
         .into_iter()
         .filter_entry(|e| !should_skip(e, &exclude_dirs));
-    let mut files = Vec::new();
+    let mut md_files = Vec::new();
+    let mut code_files = Vec::new();
+    let mut other_files = Vec::new();
     for entry in walker {
         let entry = entry?;
         if !entry.file_type().is_file() {
             continue;
         }
         let rel = normalize_relative_path(vault_root, entry.path());
-        if !is_binary_extension(&extension(&rel)) {
-            files.push(rel);
+        if is_binary_extension(&extension(&rel)) {
+            continue;
+        }
+        if rel.ends_with(".md") {
+            md_files.push(rel);
+        } else if is_code_extension(&extension(&rel)) {
+            code_files.push(rel);
+        } else {
+            other_files.push(rel);
         }
     }
-    files.sort();
-    Ok(files)
+    md_files.sort();
+    code_files.sort();
+    other_files.sort();
+    Ok((md_files, code_files, other_files))
 }
 
 fn read_file_text(path: &Path) -> io::Result<String> {
     let bytes = fs::read(path)?;
     let bytes = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(&bytes);
-    let utf8 = String::from_utf8_lossy(bytes).to_string();
+    let utf8 = String::from_utf8(bytes.to_vec())
+        .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).to_string());
     let replacement_count = utf8.matches('�').count();
     if replacement_count > utf8.len() / 100 {
         Ok(bytes.iter().map(|b| *b as char).collect())
@@ -121,11 +143,9 @@ fn read_file_text(path: &Path) -> io::Result<String> {
         Ok(utf8)
     }
 }
-
 fn sha256_hex(content: &str) -> String {
-    hex::encode(Sha256::digest(content.as_bytes()))
+    format!("{:016x}", xxh3_64(content.as_bytes()))
 }
-
 fn mtime_ms(meta: &fs::Metadata) -> f64 {
     meta.modified()
         .ok()
@@ -142,22 +162,18 @@ pub fn index_vault(
     let opts = opts.unwrap_or_default();
     let vault_root = vault_root.as_ref();
     let mut result = IndexResult::default();
-    let all_files = collect_source_files(vault_root, &opts)?;
-    let all_paths: HashSet<String> = all_files.iter().cloned().collect();
-
-    let md_files: Vec<String> = all_files
-        .iter()
-        .filter(|f| f.ends_with(".md"))
-        .cloned()
-        .collect();
-    let code_files: Vec<String> = all_files
-        .iter()
-        .filter(|f| is_code_extension(&extension(f)))
-        .cloned()
-        .collect();
+    let (md_files, code_files, other_files) = collect_source_files(vault_root, &opts)?;
+    let mut all_paths: HashSet<String> =
+        HashSet::with_capacity(md_files.len() + code_files.len() + other_files.len());
+    all_paths.extend(md_files.iter().cloned());
+    all_paths.extend(code_files.iter().cloned());
+    all_paths.extend(other_files.iter().cloned());
 
     // Use transaction for batch operations
-    store.begin_transaction()?;
+    let tx = store
+        .connection()
+        .unchecked_transaction()
+        .map_err(GraphStoreError::from)?;
 
     let mut notes = Vec::new();
     for rel_path in &md_files {
@@ -266,10 +282,7 @@ pub fn index_vault(
         }
     }
 
-    for rel_path in all_files
-        .iter()
-        .filter(|f| !f.ends_with(".md") && !is_code_extension(&extension(f)))
-    {
+    for rel_path in &other_files {
         let abs_path = vault_root.join(rel_path);
         let meta = match fs::metadata(&abs_path) {
             Ok(m) => m,
@@ -401,7 +414,7 @@ pub fn index_vault(
     }
 
     // Commit transaction
-    store.commit_transaction()?;
+    tx.commit().map_err(GraphStoreError::from)?;
 
     Ok(result)
 }

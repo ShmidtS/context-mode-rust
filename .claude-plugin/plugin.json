@@ -1,38 +1,136 @@
 {
   "name": "context-mode-rust",
-  "version": "1.3.7",
-  "description": "MCP server and plugin that solves context window flooding. Exposes 29 MCP tools across 8 categories: core execution (execute, execute_file, batch_execute), knowledge base (index, search), administration (fetch_and_index, stats, doctor, upgrade, purge, insight, connector_list, connector_add, connector_sync), semantic search (semantic_search, index_embeddings, context_pack), vault graph (vault_index, vault_graph, graph_analyze), code analysis (dead_code, complexity, dep_graph), and local code index (local_index, local_search, local_status, local_repos, local_watch, local_unwatch). Supports 11 sandboxed languages, 12 IDE platforms, and 12 skills.",
-  "author": {
-    "name": "ShmidtS",
-    "url": "https://github.com/ShmidtS"
-  },
-  "homepage": "https://github.com/ShmidtS/context-mode-rust#readme",
-  "repository": "https://github.com/ShmidtS/context-mode-rust",
+  "version": "1.3.8",
+  "description": "Context window optimization for AI coding agents via Rust MCP server",
   "license": "Elastic-2.0",
-  "keywords": [
-    "context-mode",
-    "mcp",
-    "context-window",
-    "sandbox",
-    "code-execution",
-    "fts5",
-    "bm25",
-    "semantic-search",
-    "ollama",
-    "obsidian",
-    "vault",
-    "code-analysis",
-    "dead-code",
-    "complexity",
-    "dependency-graph"
+  "author": "ShmidtS",
+  "homepage": "https://github.com/ShmidtS/context-mode-rust",
+  "mcpTools": [
+    "ctx_execute",
+    "ctx_execute_file",
+    "ctx_batch_execute",
+    "ctx_index",
+    "ctx_search",
+    "ctx_fetch_and_index",
+    "ctx_stats",
+    "ctx_doctor",
+    "ctx_upgrade",
+    "ctx_purge",
+    "ctx_insight",
+    "ctx_vault_graph",
+    "ctx_vault_index",
+    "ctx_complexity",
+    "ctx_dead_code",
+    "ctx_dep_graph",
+    "ctx_context_pack",
+    "ctx_local_index",
+    "ctx_local_search",
+    "ctx_connector_add",
+    "ctx_connector_sync",
+    "ctx_connector_list"
   ],
-  "mcpServers": {
-    "context-mode": {
-      "command": "node",
-      "args": [
-        "${CLAUDE_PLUGIN_ROOT}/start.mjs"
-      ]
-    }
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "**",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "context-mode-server",
+            "args": [
+              "hook",
+              "pretooluse"
+            ]
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "**",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "context-mode-server",
+            "args": [
+              "hook",
+              "posttooluse"
+            ]
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "context-mode-server",
+            "args": [
+              "hook",
+              "precompact"
+            ]
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "context-mode-server",
+            "args": [
+              "hook",
+              "userpromptsubmit"
+            ]
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "context-mode-server",
+            "args": [
+              "hook",
+              "sessionstart"
+            ]
+          }
+        ]
+      }
+    ]
   },
-  "skills": "./skills/"
+  "commands": {
+    "ctx-stats": {
+      "type": "tool",
+      "tool": "ctx_stats"
+    },
+    "ctx-doctor": {
+      "type": "tool",
+      "tool": "ctx_doctor"
+    },
+    "ctx-index": {
+      "type": "tool",
+      "tool": "ctx_index"
+    },
+    "ctx-search": {
+      "type": "tool",
+      "tool": "ctx_search"
+    },
+    "ctx-upgrade": {
+      "type": "tool",
+      "tool": "ctx_upgrade"
+    },
+    "ctx-purge": {
+      "type": "tool",
+      "tool": "ctx_purge"
+    },
+    "ctx-insight": {
+      "type": "tool",
+      "tool": "ctx_insight"
+    }
+  }
 }

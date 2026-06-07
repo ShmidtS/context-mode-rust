@@ -1,0 +1,18 @@
+[package]
+name = "context-mode-benches"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+criterion = { version = "0.8", features = ["html_reports"] }
+tokio = { workspace = true }
+context-mode-core = { path = "../crates/core" }
+context-mode-store = { path = "../crates/store" }
+context-mode-search = { path = "../crates/search" }
+context-mode-vault = { path = "../crates/vault" }
+context-mode-session = { path = "../crates/session" }
+context-mode-utils = { path = "../crates/utils" }
