@@ -166,7 +166,7 @@ impl SessionDB {
                     session_id,
                     event.event_type,
                     category_to_string(&event.category),
-                    event.priority as i32,
+                    event.priority,
                     event.data,
                     project_dir,
                     attribution_source,
