@@ -26,10 +26,10 @@ Requires Rust 1.85+.
 ```bash
 git clone https://github.com/ShmidtS/context-mode-rust.git
 cd context-mode-rust
-cargo build --workspace --release
-# binaries are in target/release/context-mode and target/release/context-mode-server
-cargo install --path crates/cli    # optional: adds `context-mode` to PATH
-cargo install --path crates/mcp   # optional: adds `context-mode-server` to PATH
+cargo install --path crates/cli
+cargo install --path crates/mcp
+cargo install --path crates/server
+context-mode setup
 ```
 
 Then register the MCP server in your AI client. For **Claude Code**:
