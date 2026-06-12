@@ -26,6 +26,5 @@
       "command": "context-mode-server",
       "args": []
     }
-  },
-  "skills": "./skills/"
+  }
 }
