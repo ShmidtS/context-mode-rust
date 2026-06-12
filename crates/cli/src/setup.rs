@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -43,11 +44,25 @@ fn detect_install_kind() -> InstallKind {
 /// <plugin_root>/.claude-plugin/bin/context-mode.exe; when running a
 /// dev build it is in <plugin_root>/target/release/context-mode.exe.
 fn resolve_plugin_root() -> PathBuf {
+    if let Ok(root) = std::env::var("CONTEXT_MODE_PLUGIN_ROOT") {
+        return PathBuf::from(root);
+    }
     if let Ok(root) = std::env::var("CLAUDE_PLUGIN_ROOT") {
         return PathBuf::from(root);
     }
 
     if let Ok(exe) = std::env::current_exe() {
+        let is_cargo_bin = exe.components().any(|c| c.as_os_str() == OsStr::new(".cargo"))
+            && exe.components().any(|c| c.as_os_str() == OsStr::new("bin"));
+        if is_cargo_bin {
+            if let Some(data_dir) = dirs::data_dir() {
+                return data_dir.join("context-mode");
+            }
+            if let Some(home_dir) = dirs::home_dir() {
+                return home_dir.join(".context-mode");
+            }
+        }
+
         let mut dir = exe.parent().map(PathBuf::from).unwrap_or_default();
         // Walk up looking for .claude-plugin/plugin.json (marketplace) or
         // Cargo.toml (dev workspace root).
@@ -71,12 +86,25 @@ fn resolve_plugin_root() -> PathBuf {
 /// Claude Code can invoke it from hooks and slash commands.
 fn register_context_mode_server_binary(plugin_root: &Path) -> Result<Vec<String>> {
     let mut results = Vec::new();
+    let ext = if cfg!(windows) { ".exe" } else { "" };
+    let bin_name = format!("context-mode-server{}", ext);
+
+    // Check if already available in PATH (e.g. cargo install)
+    if let Ok(path_var) = std::env::var("PATH") {
+        for path in std::env::split_paths(&path_var) {
+            let candidate = path.join(&bin_name);
+            if candidate.exists() {
+                results.push(format!(
+                    "context-mode-server already in PATH: {}",
+                    candidate.display()
+                ));
+                return Ok(results);
+            }
+        }
+    }
+
     let bin_dir = plugin_root.join(".claude-plugin").join("bin");
-    let server_src = bin_dir.join(if cfg!(windows) {
-        "context-mode-server.exe"
-    } else {
-        "context-mode-server"
-    });
+    let server_src = bin_dir.join(&bin_name);
 
     if !server_src.exists() {
         results.push(format!(
@@ -124,6 +152,77 @@ fn register_context_mode_server_binary(plugin_root: &Path) -> Result<Vec<String>
             "context-mode-server binary available at: {}",
             server_src.display()
         ));
+    }
+
+    Ok(results)
+}
+
+fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let path = entry.path();
+        let dest = dst.join(entry.file_name());
+        if path.is_dir() {
+            copy_dir_all(&path, &dest)?;
+        } else {
+            fs::copy(&path, &dest)?;
+        }
+    }
+    Ok(())
+}
+
+fn setup_resources(plugin_root: &Path) -> Result<Vec<String>> {
+    let mut results = Vec::new();
+    let skills_src = plugin_root.join("skills");
+    let hooks_src = plugin_root.join("hooks");
+    let skills_dst = plugin_root.join(".claude-plugin").join("skills");
+    let hooks_dst = plugin_root.join(".claude-plugin").join("hooks");
+
+    let skills_src = if skills_src.exists() {
+        skills_src
+    } else {
+        // Try walking up from current_dir() looking for skills/
+        let mut dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        loop {
+            if dir.join("skills").exists() {
+                break dir.join("skills");
+            }
+            if !dir.pop() {
+                break skills_src;
+            }
+        }
+    };
+
+    let hooks_src = if hooks_src.exists() {
+        hooks_src
+    } else {
+        // Try walking up from current_dir() looking for hooks/
+        let mut dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        loop {
+            if dir.join("hooks").exists() {
+                break dir.join("hooks");
+            }
+            if !dir.pop() {
+                break hooks_src;
+            }
+        }
+    };
+
+    if skills_src.exists() {
+        if let Err(e) = copy_dir_all(&skills_src, &skills_dst) {
+            results.push(format!("Warning: could not copy skills: {}", e));
+        } else {
+            results.push(format!("Copied skills to {}", skills_dst.display()));
+        }
+    }
+
+    if hooks_src.exists() {
+        if let Err(e) = copy_dir_all(&hooks_src, &hooks_dst) {
+            results.push(format!("Warning: could not copy hooks: {}", e));
+        } else {
+            results.push(format!("Copied hooks to {}", hooks_dst.display()));
+        }
     }
 
     Ok(results)
@@ -185,6 +284,18 @@ pub fn run() -> Result<()> {
                     }
                 }
             }
+        }
+    }
+
+    // Copy skills and hooks into plugin root
+    match setup_resources(&plugin_root) {
+        Ok(msgs) => {
+            for msg in msgs {
+                println!("{}", msg);
+            }
+        }
+        Err(e) => {
+            println!("Warning: could not setup resources: {}", e);
         }
     }
 
