@@ -1,0 +1,17 @@
+[package]
+name = "context-mode-installer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+context-mode-cli = { path = "../cli" }
+context-mode-server = { path = "../mcp" }
+context-mode-insight = { path = "../server" }
+
+[[bin]]
+name = "context-mode-installer"
+path = "src/main.rs"
+test = false
