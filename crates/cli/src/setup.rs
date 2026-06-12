@@ -52,7 +52,9 @@ fn resolve_plugin_root() -> PathBuf {
     }
 
     if let Ok(exe) = std::env::current_exe() {
-        let is_cargo_bin = exe.components().any(|c| c.as_os_str() == OsStr::new(".cargo"))
+        let is_cargo_bin = exe
+            .components()
+            .any(|c| c.as_os_str() == OsStr::new(".cargo"))
             && exe.components().any(|c| c.as_os_str() == OsStr::new("bin"));
         if is_cargo_bin {
             if let Some(data_dir) = dirs::data_dir() {
