@@ -1,6 +1,6 @@
 {
   "name": "context-mode-rust",
-  "version": "1.3.8",
+  "version": "1.3.9",
   "description": "MCP server that saves context window with session continuity. Sandboxed code execution in 11 languages, FTS5 knowledge base with BM25 ranking, and knowledge graph indexing.",
   "author": {
     "name": "ShmidtS",

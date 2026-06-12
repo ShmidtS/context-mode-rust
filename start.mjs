@@ -1,9 +1,9 @@
 import { spawn } from 'child_process';
-import { existsSync, createWriteStream, mkdirSync, chmodSync, unlinkSync, writeFileSync, readFileSync, statSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { platform, arch, homedir } from 'os';
+import { chmodSync, createWriteStream, existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'fs';
 import https from 'https';
+import { arch, homedir, platform } from 'os';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
 
 const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || fileURLToPath(new URL('.', import.meta.url));
 const IS_WIN = platform() === 'win32';
@@ -11,7 +11,7 @@ const EXT = IS_WIN ? '.exe' : '';
 const BIN_NAME = `context-mode-server${EXT}`;
 const CLI_BIN_NAME = `context-mode${EXT}`;
 const INSIGHT_BIN_NAME = `context-mode-insight${EXT}`;
-const VERSION = '1.3.7';
+const VERSION = '1.3.9';
 const HOOK_TYPES = ['posttooluse', 'pretooluse', 'precompact', 'sessionstart', 'userpromptsubmit'];
 
 function log(...args) {
@@ -39,12 +39,12 @@ function downloadFile(url, dest) {
     const req = https.get(url, { timeout: 60000 }, (res) => {
       if (res.statusCode === 302 || res.statusCode === 301) {
         file.close();
-        try { unlinkSync(dest); } catch {}
+        try { unlinkSync(dest); } catch { }
         return downloadFile(res.headers.location, dest).then(resolve).catch(reject);
       }
       if (res.statusCode !== 200) {
         file.close();
-        try { unlinkSync(dest); } catch {}
+        try { unlinkSync(dest); } catch { }
         return reject(new Error(`HTTP ${res.statusCode} for ${url}`));
       }
       res.pipe(file);
@@ -54,12 +54,12 @@ function downloadFile(url, dest) {
       });
     });
     req.on('error', (err) => {
-      try { unlinkSync(dest); } catch {}
+      try { unlinkSync(dest); } catch { }
       reject(err);
     });
     req.on('timeout', () => {
       req.destroy();
-      try { unlinkSync(dest); } catch {}
+      try { unlinkSync(dest); } catch { }
       reject(new Error('Download timeout'));
     });
   });
