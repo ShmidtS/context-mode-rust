@@ -329,23 +329,42 @@ impl ContextModeServer {
         let ext = if cfg!(windows) { ".exe" } else { "" };
         let bin_name = format!("context-mode-insight{}", ext);
 
-        let candidates = [
+        let mut candidates = Vec::new();
+
+        // 1. Try PATH via `which` crate
+        if let Ok(found) = which::which(&bin_name) {
+            candidates.push(found);
+        }
+
+        // 2. Try sibling to current exe
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                candidates.push(dir.join(&bin_name));
+            }
+        }
+
+        // 3. Fallback to current-dir-based paths
+        candidates.push(
             std::env::current_dir()
                 .unwrap_or_default()
                 .join(".claude-plugin")
                 .join("bin")
                 .join(&bin_name),
+        );
+        candidates.push(
             std::env::current_dir()
                 .unwrap_or_default()
                 .join("target")
                 .join("release")
                 .join(&bin_name),
+        );
+        candidates.push(
             std::env::current_dir()
                 .unwrap_or_default()
                 .join("target")
                 .join("debug")
                 .join(&bin_name),
-        ];
+        );
 
         let binary = candidates.iter().find(|p| p.exists()).cloned();
 

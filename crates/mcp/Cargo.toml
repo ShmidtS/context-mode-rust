@@ -16,6 +16,7 @@ tokio = { workspace = true }
 axum = { workspace = true }
 tower = { workspace = true }
 reqwest = { workspace = true }
+which = "8.0"
 context-mode-core = { path = "../core" }
 context-mode-store = { path = "../store" }
 context-mode-session = { path = "../session" }
